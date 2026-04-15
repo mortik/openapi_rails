@@ -34,7 +34,7 @@ module OpenapiRails
 
         # Validate the response body
         response_body = read_body(body)
-        errors = validate_response(response_spec, response_body, status, headers)
+        errors = validate_response(response_spec, response_body)
 
         if errors.any?
           if @mode == :warn_only
@@ -69,26 +69,59 @@ module OpenapiRails
         content
       end
 
-      def validate_response(response_spec, response_body, _status, _headers)
+      def validate_response(response_spec, response_body)
         errors = []
 
         content_spec = response_spec.dig("content", "application/json")
         return errors unless content_spec && content_spec["schema"] && response_body
 
-        schema = content_spec["schema"]
-        begin
-          schemer = JSONSchemer.schema(schema)
-          validation_errors = schemer.validate(response_body).to_a
-          validation_errors.each do |err|
-            pointer = err["data_pointer"] || ""
-            type = err["type"] || "validation_failed"
-            errors << "#{pointer}: #{type}".strip
-          end
-        rescue => e
-          errors << e.message
-        end
+        schema_validator = build_schema_validator(content_spec["schema"])
+        return errors unless schema_validator
 
+        schema_validator.validate(response_body).each do |err|
+          pointer = err["data_pointer"] || ""
+          msg = err["error"] || err["type"] || "validation failed"
+          location = pointer.empty? ? "response body" : "response body at #{pointer}"
+          errors << "Invalid #{location}: #{msg}"
+        end
         errors
+      rescue => e
+        [e.message]
+      end
+
+      def build_schema_validator(schema)
+        if schema.is_a?(Hash) && schema["$ref"]
+          @resolver.schemer.ref(schema["$ref"])
+        else
+          # For inline schemas that may contain nested $ref, resolve via document pointer
+          pointer = find_schema_pointer(schema)
+          if pointer
+            @resolver.schemer.ref(pointer)
+          else
+            JSONSchemer.schema(schema)
+          end
+        end
+      rescue
+        nil
+      end
+
+      def find_schema_pointer(schema)
+        # Walk the document to find the JSON pointer for this schema object
+        document = @resolver.document
+        document.fetch("paths", {}).each do |path, path_item|
+          path_item.each do |method, operation|
+            next unless operation.is_a?(Hash) && operation["responses"]
+
+            operation["responses"].each do |status, resp|
+              resp_schema = resp.dig("content", "application/json", "schema")
+              if resp_schema.equal?(schema) || resp_schema == schema
+                escaped_path = path.gsub("/", "~1")
+                return "#/paths/#{escaped_path}/#{method}/responses/#{status}/content/application~1json/schema"
+              end
+            end
+          end
+        end
+        nil
       end
     end
   end

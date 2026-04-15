@@ -641,22 +641,24 @@ Creates:
 - `Middleware::SchemaResolver` (loads + caches OA doc)
 - `Testing::Assertions` (assert_schema_conform, assert_request_schema_confirm, assert_response_schema_confirm)
 - `Testing::Coverage`, `Testing::CoverageReporter`
+- Deep schema validation: parameter type checking, request body validation (required fields, types, constraints), response body validation with `$ref` resolution via `schemer.ref()`
 
 ### Phase 5: Rails Integration + Optional UI
-- `Engine`, `Railtie` — middleware auto-insertion, component loading
-- Specs controller (serves generated OA files)
+- `Engine`, `Railtie` — middleware auto-insertion, component loading, auto-define namespace modules
+- Specs controller (serves generated OA files with optional `openapi_filter`)
 - All generators (install, component)
 - Route mounting
 - Optional `UI::Engine` + UI controller (Swagger UI via CDN, vendorable)
 
 ### Phase 6: Integration Testing
-- Dummy Rails app (`spec/dummy`) with a simple API controller (e.g. UsersController with CRUD)
-- Schema components for the dummy app (User, UserInput, Error)
-- RSpec integration specs exercising the full DSL (`path`/`get`/`response`/`run_test!`) against real requests
-- End-to-end spec generation: run tests -> generate OpenAPI file -> validate it with json_schemer
-- Middleware integration: test request/response validation in a live Rack stack
-- Specs controller integration: verify serving generated OpenAPI files
-- Minitest integration test proving the adapter works with real requests
+- Dummy Rails app (`spec/dummy`) as a reference implementation showing real-world usage
+- Two API endpoints: Users (CRUD) tested via RSpec DSL, Posts (CRUD) tested via Minitest DSL
+- Schema components: User, UserInput, Post, PostInput, ErrorResponse, ValidationErrors
+- Valid static `swagger/public_api.yaml` with all endpoints and components
+- RSpec integration specs exercising full DSL (`path`/`get`/`response`/`run_test!`) against real requests
+- Minitest integration specs exercising `api_path`/`assert_api_response` against real requests
+- Spec generation validation: verify generated output is valid OpenAPI 3.1 and matches static spec
+- Middleware deep validation tests: wrong param types, missing/invalid body fields, constraint violations, `$ref` resolution, content type validation
 
 ### Phase 7: Polish
 - Migration guide from rswag
@@ -686,11 +688,11 @@ Creates:
 
 ## 14. Verification Plan
 
-1. **Unit tests** — Core document model, component system, DSL parsing, key transformation, path matching
-2. **Integration tests (RSpec)** — Dummy Rails app with full DSL specs, verify generated OA 3.1 files validate correctly
-3. **Integration tests (Minitest)** — Same dummy app, Minitest integration, same spec generation
-4. **Middleware tests** — Rack::Test exercising request/response validation, coercion, strict mode, error handling
+1. **Unit tests** — Core document model, component system, DSL parsing, key transformation, path matching, coercion
+2. **Integration tests (RSpec)** — Dummy app Users API tested via DSL (`path`/`get`/`response`/`run_test!`) with real HTTP requests
+3. **Integration tests (Minitest)** — Dummy app Posts API tested via `api_path`/`assert_api_response` as subprocess
+4. **Middleware deep validation** — Rack::Test exercising parameter type checking, request body schema validation (required fields, types, minLength), response body validation with `$ref` resolution, content type enforcement, strict mode, warn-only mode
 5. **Component tests** — Inheritance, hidden components, scoped loading, key transformation, duplicate detection
-6. **Generated spec validation** — Feed generated YAML/JSON through `json_schemer` OA 3.1 meta-schema validation
+6. **Generated spec validation** — Verify static `swagger/public_api.yaml` is valid OA 3.1, verify generation pipeline produces matching output
 7. **Coverage tracking** — Verify coverage reports match actual test coverage of endpoints
-8. **UI smoke test** — Mount engine, verify Swagger UI loads and renders spec
+8. **Generator tests** — Install generator (initializer, helper, dirs, routes), component generator (schemas, security_schemes, request_bodies)

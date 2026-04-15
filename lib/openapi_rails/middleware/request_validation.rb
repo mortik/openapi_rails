@@ -57,34 +57,141 @@ module OpenapiRails
         errors = []
         parameters = operation.fetch("parameters", [])
 
-        # Validate required parameters
+        # Validate each parameter (presence + type)
         parameters.each do |param|
-          next unless param["required"]
+          value = extract_param_value(request, param, path_params)
 
-          value = case param["in"]
-          when "query" then request.GET[param["name"]]
-          when "header" then request.get_header("HTTP_#{param["name"].upcase.tr("-", "_")}")
-          when "path" then path_params[param["name"]]
+          if value.nil?
+            errors << "Missing required #{param["in"]} parameter: #{param["name"]}" if param["required"]
+            next
           end
 
-          errors << "Missing required #{param["in"]} parameter: #{param["name"]}" if value.nil?
+          # Validate parameter value against schema
+          if param["schema"]
+            param_errors = validate_value(value, param["schema"], "#{param["in"]} parameter '#{param["name"]}'")
+            errors.concat(param_errors)
+          end
         end
 
         # Validate request body
-        if operation["requestBody"]
-          content_type = request.content_type&.split(";")&.first
-          rb = operation["requestBody"]
-
-          if rb["required"] && (request.body.nil? || request.body.read.tap { request.body.rewind }.empty?)
-            errors << "Request body is required"
-          elsif rb["content"] && content_type
-            unless rb["content"].key?(content_type)
-              errors << "Unsupported content type: #{content_type}"
-            end
-          end
-        end
+        errors.concat(validate_request_body(request, operation))
 
         errors
+      end
+
+      def extract_param_value(request, param, path_params)
+        case param["in"]
+        when "query" then request.GET[param["name"]]
+        when "header" then request.get_header("HTTP_#{param["name"].upcase.tr("-", "_")}")
+        when "path" then path_params[param["name"]]
+        end
+      end
+
+      def validate_request_body(request, operation)
+        errors = []
+        rb_spec = operation["requestBody"]
+        return errors unless rb_spec
+
+        content_type = request.content_type&.split(";")&.first
+        body_content = read_request_body(request)
+
+        if rb_spec["required"] && body_content.nil?
+          errors << "Request body is required"
+          return errors
+        end
+
+        return errors unless body_content && rb_spec["content"]
+
+        if content_type && !rb_spec["content"].key?(content_type)
+          errors << "Unsupported content type: #{content_type}"
+          return errors
+        end
+
+        # Validate body against schema
+        media_type = content_type || rb_spec["content"].keys.first
+        schema = rb_spec.dig("content", media_type, "schema")
+        return errors unless schema
+
+        body_data = parse_body(body_content, media_type)
+        return errors unless body_data
+
+        validate_against_document(body_data, schema, "request body", errors)
+        errors
+      end
+
+      def validate_value(value, schema, context)
+        errors = []
+        # Coerce string values for validation based on schema type
+        coerced = coerce_for_validation(value, schema)
+        schemer = JSONSchemer.schema(schema)
+        schemer.validate(coerced).each do |err|
+          msg = err["error"] || err["type"] || "validation failed"
+          errors << "Invalid #{context}: #{msg}"
+        end
+        errors
+      rescue => e
+        ["Invalid #{context}: #{e.message}"]
+      end
+
+      def validate_against_document(data, schema, context, errors)
+        schema_validator = resolve_schema(schema)
+        schema_validator.validate(data).each do |err|
+          pointer = err["data_pointer"] || ""
+          msg = err["error"] || err["type"] || "validation failed"
+          location = pointer.empty? ? context : "#{context} at #{pointer}"
+          errors << "Invalid #{location}: #{msg}"
+        end
+      rescue => e
+        errors << "Invalid #{context}: #{e.message}"
+      end
+
+      def resolve_schema(schema)
+        if schema.is_a?(Hash) && schema["$ref"]
+          @resolver.schemer.ref(schema["$ref"])
+        else
+          JSONSchemer.schema(schema)
+        end
+      end
+
+      def coerce_for_validation(value, schema)
+        return value unless value.is_a?(String)
+
+        case schema["type"]
+        when "integer"
+          Integer(value)
+        when "number"
+          Float(value)
+        when "boolean"
+          case value.downcase
+          when "true", "1" then true
+          when "false", "0" then false
+          else value
+          end
+        else
+          value
+        end
+      rescue ArgumentError, TypeError
+        value
+      end
+
+      def read_request_body(request)
+        return nil unless request.body
+
+        content = request.body.read
+        request.body.rewind
+        content.empty? ? nil : content
+      end
+
+      def parse_body(content, media_type)
+        return nil unless content
+
+        if media_type&.include?("json")
+          JSON.parse(content)
+        else
+          content
+        end
+      rescue JSON::ParserError
+        nil
       end
     end
   end

@@ -16,14 +16,26 @@ RSpec.describe OpenapiRails::Middleware::RequestValidation do
         "/users" => {
           "get" => {
             "parameters" => [
-              {"name" => "page", "in" => "query", "required" => true, "schema" => {"type" => "integer"}}
+              {"name" => "page", "in" => "query", "required" => true, "schema" => {"type" => "integer"}},
+              {"name" => "per_page", "in" => "query", "required" => false, "schema" => {"type" => "integer"}}
             ],
             "responses" => {"200" => {"description" => "OK"}}
           },
           "post" => {
             "requestBody" => {
               "required" => true,
-              "content" => {"application/json" => {"schema" => {"type" => "object"}}}
+              "content" => {
+                "application/json" => {
+                  "schema" => {
+                    "type" => "object",
+                    "required" => ["name", "email"],
+                    "properties" => {
+                      "name" => {"type" => "string", "minLength" => 1},
+                      "email" => {"type" => "string"}
+                    }
+                  }
+                }
+              }
             },
             "responses" => {"201" => {"description" => "Created"}}
           }
@@ -46,35 +58,107 @@ RSpec.describe OpenapiRails::Middleware::RequestValidation do
     described_class.new(inner_app, schema_resolver: resolver, mode: :enabled, strict: false)
   end
 
-  it "passes valid requests" do
-    get "/users?page=1"
-    expect(last_response.status).to eq(200)
-  end
-
-  it "rejects requests missing required query params" do
-    get "/users"
-    expect(last_response.status).to eq(400)
-    body = JSON.parse(last_response.body)
-    expect(body["details"]).to include(/Missing required query parameter: page/)
-  end
-
-  it "passes through undocumented paths in non-strict mode" do
-    get "/unknown"
-    expect(last_response.status).to eq(200)
-  end
-
-  context "with strict mode" do
-    let(:app) do
-      described_class.new(inner_app, schema_resolver: resolver, mode: :enabled, strict: true)
+  describe "parameter presence validation" do
+    it "passes valid requests" do
+      get "/users?page=1"
+      expect(last_response.status).to eq(200)
     end
 
-    it "returns 404 for undocumented paths" do
+    it "rejects requests missing required query params" do
+      get "/users"
+      expect(last_response.status).to eq(400)
+      body = JSON.parse(last_response.body)
+      expect(body["details"]).to include(/Missing required query parameter: page/)
+    end
+
+    it "allows missing optional params" do
+      get "/users?page=1"
+      expect(last_response.status).to eq(200)
+    end
+  end
+
+  describe "parameter type validation" do
+    it "rejects query params with wrong type" do
+      get "/users?page=notanumber"
+      expect(last_response.status).to eq(400)
+      body = JSON.parse(last_response.body)
+      expect(body["details"].first).to match(/Invalid.*page/i)
+    end
+
+    it "accepts valid integer params as strings (coerced)" do
+      get "/users?page=5"
+      expect(last_response.status).to eq(200)
+    end
+  end
+
+  describe "request body validation" do
+    it "rejects missing required request body" do
+      post "/users", "", {"CONTENT_TYPE" => "application/json"}
+      expect(last_response.status).to eq(400)
+      body = JSON.parse(last_response.body)
+      expect(body["details"]).to include(/Request body is required/)
+    end
+
+    it "rejects request body missing required fields" do
+      post "/users", '{"name":"Jane"}', {"CONTENT_TYPE" => "application/json"}
+      expect(last_response.status).to eq(400)
+      body = JSON.parse(last_response.body)
+      expect(body["details"].first).to match(/email|required/i)
+    end
+
+    it "rejects request body with wrong field types" do
+      post "/users", '{"name":123,"email":"test@example.com"}', {"CONTENT_TYPE" => "application/json"}
+      expect(last_response.status).to eq(400)
+      body = JSON.parse(last_response.body)
+      expect(body["details"].first).to match(/name|type/i)
+    end
+
+    it "rejects request body violating constraints" do
+      post "/users", '{"name":"","email":"test@example.com"}', {"CONTENT_TYPE" => "application/json"}
+      expect(last_response.status).to eq(400)
+      body = JSON.parse(last_response.body)
+      expect(body["details"].first).to match(/name|minLength/i)
+    end
+
+    it "passes valid request body" do
+      post "/users", '{"name":"Jane","email":"jane@example.com"}', {"CONTENT_TYPE" => "application/json"}
+      expect(last_response.status).to eq(200)
+    end
+
+    it "rejects unsupported content type" do
+      post "/users", "name=Jane", {"CONTENT_TYPE" => "text/plain"}
+      expect(last_response.status).to eq(400)
+      body = JSON.parse(last_response.body)
+      expect(body["details"]).to include(/Unsupported content type/)
+    end
+  end
+
+  describe "path parameter validation" do
+    it "validates path parameters" do
+      get "/users/42"
+      expect(last_response.status).to eq(200)
+    end
+  end
+
+  describe "undocumented paths" do
+    it "passes through in non-strict mode" do
       get "/unknown"
-      expect(last_response.status).to eq(404)
+      expect(last_response.status).to eq(200)
+    end
+
+    context "with strict mode" do
+      let(:app) do
+        described_class.new(inner_app, schema_resolver: resolver, mode: :enabled, strict: true)
+      end
+
+      it "returns 404" do
+        get "/unknown"
+        expect(last_response.status).to eq(404)
+      end
     end
   end
 
-  context "with warn_only mode" do
+  describe "warn_only mode" do
     let(:app) do
       described_class.new(inner_app, schema_resolver: resolver, mode: :warn_only)
     end
@@ -85,7 +169,7 @@ RSpec.describe OpenapiRails::Middleware::RequestValidation do
     end
   end
 
-  context "with disabled mode" do
+  describe "disabled mode" do
     let(:app) do
       described_class.new(inner_app, schema_resolver: resolver, mode: :disabled)
     end
@@ -94,17 +178,5 @@ RSpec.describe OpenapiRails::Middleware::RequestValidation do
       get "/users"
       expect(last_response.status).to eq(200)
     end
-  end
-
-  it "validates path parameters" do
-    get "/users/42"
-    expect(last_response.status).to eq(200)
-  end
-
-  it "rejects missing required request body" do
-    post "/users", "", {"CONTENT_TYPE" => "application/json"}
-    expect(last_response.status).to eq(400)
-    body = JSON.parse(last_response.body)
-    expect(body["details"]).to include(/Request body is required/)
   end
 end

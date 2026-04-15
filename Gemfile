@@ -17,8 +17,13 @@ group :test do
   rails_version = ENV.fetch("RAILS_VERSION", nil)
   if rails_version
     gem "rails", "~> #{rails_version}.0"
+    if rails_version.to_f < 7.2
+      gem "sqlite3", "~> 1.4"
+    else
+      gem "sqlite3"
+    end
   else
     gem "rails", ">= 7.0"
+    gem "sqlite3"
   end
-  gem "sqlite3"
 end

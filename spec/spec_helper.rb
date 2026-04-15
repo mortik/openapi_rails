@@ -19,5 +19,6 @@ RSpec.configure do |config|
   config.before do
     OpenapiRails.reset_configuration!
     OpenapiRails::Components::Registry.instance.clear!
+    OpenapiRails::DSL::MetadataStore.clear!
   end
 end

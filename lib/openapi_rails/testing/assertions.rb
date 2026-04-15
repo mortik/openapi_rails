@@ -50,8 +50,8 @@ module OpenapiRails
       private
 
       def load_openapi_document(spec_path = nil)
-        path = spec_path || default_spec_path
-        raise OpenapiRails::Error, "No OpenAPI spec path configured" unless path
+        path = spec_path || default_schema_path
+        raise OpenapiRails::Error, "No OpenAPI schema path configured" unless path
 
         @_openapi_documents ||= {}
         @_openapi_documents[path] ||= begin
@@ -64,13 +64,13 @@ module OpenapiRails
         end
       end
 
-      def default_spec_path
+      def default_schema_path
         config = OpenapiRails.configuration
-        return nil if config.specs.empty?
+        return nil if config.schemas.empty?
 
-        spec_name = config.specs.keys.first
-        ext = (config.spec_output_format == :json) ? "json" : "yaml"
-        File.join(config.spec_output_dir, "#{spec_name}.#{ext}")
+        schema_name = config.schemas.keys.first
+        ext = (config.schema_output_format == :json) ? "json" : "yaml"
+        File.join(config.schema_output_dir, "#{schema_name}.#{ext}")
       end
 
       def find_matching_path(request_path, document)

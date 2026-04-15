@@ -46,7 +46,7 @@ This creates:
 ```ruby
 # config/initializers/openapi_rails.rb
 OpenapiRails.configure do |config|
-  config.specs = {
+  config.schemas = {
     public_api: {
       info: { title: "My API", version: "v1" },
       servers: [{ url: "/" }]
@@ -55,8 +55,8 @@ OpenapiRails.configure do |config|
 
   config.component_paths = ["app/api_components"]
   config.camelize_keys = true
-  config.spec_output_dir = "swagger"
-  config.spec_output_format = :yaml
+  config.schema_output_dir = "swagger"
+  config.schema_output_format = :yaml
   config.validate_responses_in_tests = true
 
   # Runtime middleware (disabled by default)
@@ -283,7 +283,7 @@ require "test_helper"
 class UsersApiTest < ActionDispatch::IntegrationTest
   include OpenapiRails::Adapters::Minitest::DSL
 
-  openapi_spec :public_api
+  openapi_schema :public_api
 
   api_path "/api/v1/users" do
     get "List users" do
@@ -356,8 +356,15 @@ Invalid requests return `400` with details. Invalid responses return `500`. In `
 
 ### Strict Mode
 
+Strict mode can be enabled per-schema to return 404 for undocumented paths:
+
 ```ruby
-config.strict_mode = true  # 404 for undocumented paths
+config.schemas = {
+  public_api: {
+    info: { title: "My API", version: "v1" },
+    strict_mode: true  # 404 for undocumented paths
+  }
+}
 ```
 
 ## Swagger UI
@@ -370,7 +377,7 @@ OpenapiRails.configure do |config|
 end
 ```
 
-Visit `/api-docs/ui` to see your API documentation. Spec files are served at `/api-docs/specs/:name`.
+Visit `/api-docs/ui` to see your API documentation. Schema files are served at `/api-docs/schemas/:name`.
 
 ## Engine Routes
 

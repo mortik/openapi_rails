@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 OpenapiRails::Engine.routes.draw do
-  get "specs", to: "specs#index", as: :specs
-  get "specs/:id", to: "specs#show", as: :spec
+  get "schemas", to: "schemas#index", as: :schemas
+  get "schemas/:id", to: "schemas#show", as: :schema
 
   get "ui", to: "ui#index", as: :ui
 end

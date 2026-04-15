@@ -48,10 +48,10 @@ RSpec.describe OpenapiRails::DSL::Context do
       expect(op_params.any? { |p| p["name"] == "id" }).to be true
     end
 
-    it "stores spec_name" do
-      ctx = described_class.new("/users", spec_name: :public_api)
+    it "stores schema_name" do
+      ctx = described_class.new("/users", schema_name: :public_api)
 
-      expect(ctx.spec_name).to eq(:public_api)
+      expect(ctx.schema_name).to eq(:public_api)
     end
   end
 

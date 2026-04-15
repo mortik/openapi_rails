@@ -8,18 +8,18 @@ module OpenapiRails
       return head :not_found unless OpenapiRails.configuration.ui_enabled
 
       config = OpenapiRails.configuration
-      @specs = config.specs.keys.map(&:to_s)
-      @default_spec = @specs.first
+      @schemas = config.schemas.keys.map(&:to_s)
+      @default_schema = @schemas.first
       @ui_config = config.ui_config
-      @spec_url = openapi_rails.spec_path(@default_spec, format: spec_format)
+      @schema_url = openapi_rails.schema_path(@default_schema, format: schema_format)
 
       render html: swagger_ui_html.html_safe
     end
 
     private
 
-    def spec_format
-      (OpenapiRails.configuration.spec_output_format == :json) ? :json : :yaml
+    def schema_format
+      (OpenapiRails.configuration.schema_output_format == :json) ? :json : :yaml
     end
 
     def swagger_ui_html
@@ -41,7 +41,7 @@ module OpenapiRails
           <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
           <script>
             SwaggerUIBundle({
-              url: "#{@spec_url}",
+              url: "#{@schema_url}",
               dom_id: '#swagger-ui',
               deepLinking: true,
               presets: [

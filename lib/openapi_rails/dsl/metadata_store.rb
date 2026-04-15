@@ -19,9 +19,9 @@ module OpenapiRails
         @contexts << context
       end
 
-      def contexts_for(spec_name)
-        spec_name = spec_name&.to_sym
-        @contexts.select { |c| c.spec_name.nil? || c.spec_name&.to_sym == spec_name }
+      def contexts_for(schema_name)
+        schema_name = schema_name&.to_sym
+        @contexts.select { |c| c.schema_name.nil? || c.schema_name&.to_sym == schema_name }
       end
 
       def all_contexts

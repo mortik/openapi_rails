@@ -16,17 +16,17 @@ RSpec.describe OpenapiRails::DSL::MetadataStore do
 
   describe ".contexts_for" do
     it "returns contexts matching spec name" do
-      public_ctx = OpenapiRails::DSL::Context.new("/users", spec_name: :public)
-      admin_ctx = OpenapiRails::DSL::Context.new("/admin", spec_name: :admin)
+      public_ctx = OpenapiRails::DSL::Context.new("/users", schema_name: :public)
+      admin_ctx = OpenapiRails::DSL::Context.new("/admin", schema_name: :admin)
       described_class.register(public_ctx)
       described_class.register(admin_ctx)
 
       expect(described_class.contexts_for(:public)).to eq([public_ctx])
     end
 
-    it "includes contexts without a spec name (global)" do
+    it "includes contexts without a schema name (global)" do
       global_ctx = OpenapiRails::DSL::Context.new("/health")
-      public_ctx = OpenapiRails::DSL::Context.new("/users", spec_name: :public)
+      public_ctx = OpenapiRails::DSL::Context.new("/users", schema_name: :public)
       described_class.register(global_ctx)
       described_class.register(public_ctx)
 

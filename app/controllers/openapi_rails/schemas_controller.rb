@@ -1,23 +1,23 @@
 # frozen_string_literal: true
 
 module OpenapiRails
-  class SpecsController < ActionController::API
+  class SchemasController < ActionController::API
     def show
-      spec_name = params[:id]
+      schema_name = params[:id]
       config = OpenapiRails.configuration
 
-      spec_config = config.specs[spec_name.to_sym]
-      return head :not_found unless spec_config
+      schema_config = config.schemas[schema_name.to_sym]
+      return head :not_found unless schema_config
 
-      file_path = spec_file_path(spec_name)
+      file_path = schema_file_path(schema_name)
       return head :not_found unless file_path && File.exist?(file_path)
 
       content = File.read(file_path)
 
       # Apply filter if configured
-      if spec_config[:openapi_filter]
+      if schema_config[:openapi_filter]
         doc = parse_content(file_path, content)
-        spec_config[:openapi_filter].call(doc, request)
+        schema_config[:openapi_filter].call(doc, request)
         content = serialize_doc(file_path, doc)
       end
 
@@ -26,16 +26,16 @@ module OpenapiRails
     end
 
     def index
-      specs = OpenapiRails.configuration.specs.keys.map(&:to_s)
-      render json: {specs: specs}
+      schemas = OpenapiRails.configuration.schemas.keys.map(&:to_s)
+      render json: {schemas: schemas}
     end
 
     private
 
-    def spec_file_path(spec_name)
+    def schema_file_path(schema_name)
       config = OpenapiRails.configuration
-      ext = (config.spec_output_format == :json) ? "json" : "yaml"
-      path = Rails.root.join(config.spec_output_dir, "#{spec_name}.#{ext}")
+      ext = (config.schema_output_format == :json) ? "json" : "yaml"
+      path = Rails.root.join(config.schema_output_dir, "#{schema_name}.#{ext}")
       path.to_s
     end
 

@@ -29,7 +29,7 @@ RSpec.describe OpenapiRails::Generators::InstallGenerator do
     expect(File.exist?(path)).to be true
     content = File.read(path)
     expect(content).to include("OpenapiRails.configure")
-    expect(content).to include("config.specs")
+    expect(content).to include("config.schemas")
   end
 
   it "creates the openapi helper for rspec" do

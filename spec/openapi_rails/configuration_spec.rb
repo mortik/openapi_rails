@@ -6,8 +6,8 @@ RSpec.describe OpenapiRails::Configuration do
   subject(:config) { described_class.new }
 
   describe "defaults" do
-    it "sets specs to empty hash" do
-      expect(config.specs).to eq({})
+    it "sets schemas to empty hash" do
+      expect(config.schemas).to eq({})
     end
 
     it "sets component_paths" do
@@ -26,20 +26,16 @@ RSpec.describe OpenapiRails::Configuration do
       expect(config.response_validation).to eq(:disabled)
     end
 
-    it "disables strict_mode" do
-      expect(config.strict_mode).to be false
-    end
-
     it "enables coerce_params" do
       expect(config.coerce_params).to be true
     end
 
-    it "sets spec_output_dir to swagger" do
-      expect(config.spec_output_dir).to eq("swagger")
+    it "sets schema_output_dir to swagger" do
+      expect(config.schema_output_dir).to eq("swagger")
     end
 
-    it "sets spec_output_format to yaml" do
-      expect(config.spec_output_format).to eq(:yaml)
+    it "sets schema_output_format to yaml" do
+      expect(config.schema_output_format).to eq(:yaml)
     end
 
     it "enables validate_responses_in_tests" do
@@ -77,8 +73,8 @@ RSpec.describe OpenapiRails::Configuration do
       expect { config.validate! }.to raise_error(OpenapiRails::ConfigurationError)
     end
 
-    it "rejects invalid spec_output_format" do
-      config.spec_output_format = :xml
+    it "rejects invalid schema_output_format" do
+      config.schema_output_format = :xml
       expect { config.validate! }.to raise_error(OpenapiRails::ConfigurationError)
     end
   end

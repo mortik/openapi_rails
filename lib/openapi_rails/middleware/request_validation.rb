@@ -6,7 +6,7 @@ module OpenapiRails
       def initialize(app, options = {})
         @app = app
         @resolver = options[:schema_resolver] || SchemaResolver.new(spec_path: options[:spec_path])
-        @strict = options.fetch(:strict, OpenapiRails.configuration.strict_mode)
+        @strict = options.fetch(:strict, false)
         @coerce = options.fetch(:coerce, OpenapiRails.configuration.coerce_params)
         @error_handler = options[:error_handler] || ErrorHandler.new
         @mode = options.fetch(:mode, OpenapiRails.configuration.request_validation)
@@ -19,7 +19,7 @@ module OpenapiRails
         result = @resolver.find_operation(request.request_method, request.path_info)
 
         if result.nil?
-          return @strict ? @error_handler.not_found(request.path_info) : @app.call(env)
+          return strict? ? @error_handler.not_found(request.path_info) : @app.call(env)
         end
 
         operation = result[:operation]
@@ -52,6 +52,13 @@ module OpenapiRails
       end
 
       private
+
+      def strict?
+        return @strict if @strict
+
+        # Check per-schema strict_mode from configuration
+        OpenapiRails.configuration.schemas.any? { |_name, config| config[:strict_mode] }
+      end
 
       def validate_request(request, operation, path_params)
         errors = []

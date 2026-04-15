@@ -5,15 +5,15 @@ require "fileutils"
 require "tmpdir"
 require "securerandom"
 
-RSpec.describe OpenapiRails::Generator::SpecWriter do
+RSpec.describe OpenapiRails::Generator::SchemaWriter do
   let(:output_dir) { File.join(Dir.tmpdir, "openapi_rails_test_#{SecureRandom.hex(4)}") }
 
   before do
     OpenapiRails::DSL::MetadataStore.clear!
     OpenapiRails.configure do |config|
-      config.spec_output_dir = output_dir
-      config.spec_output_format = :yaml
-      config.specs = {
+      config.schema_output_dir = output_dir
+      config.schema_output_format = :yaml
+      config.schemas = {
         public_api: {
           info: {title: "Test API", version: "1.0.0"},
           servers: [{url: "https://api.example.com"}]
@@ -28,11 +28,11 @@ RSpec.describe OpenapiRails::Generator::SpecWriter do
 
   describe "#write!" do
     it "generates a YAML spec file" do
-      ctx = OpenapiRails::DSL::Context.new("/health", spec_name: :public_api)
+      ctx = OpenapiRails::DSL::Context.new("/health", schema_name: :public_api)
       ctx.get("Health check") { response(200, "OK") }
       OpenapiRails::DSL::MetadataStore.register(ctx)
 
-      writer = described_class.new(:public_api, OpenapiRails.configuration.specs[:public_api])
+      writer = described_class.new(:public_api, OpenapiRails.configuration.schemas[:public_api])
       path = writer.write!
 
       expect(File.exist?(path)).to be true
@@ -43,13 +43,13 @@ RSpec.describe OpenapiRails::Generator::SpecWriter do
     end
 
     it "generates a JSON spec file" do
-      OpenapiRails.configuration.spec_output_format = :json
+      OpenapiRails.configuration.schema_output_format = :json
 
-      ctx = OpenapiRails::DSL::Context.new("/health", spec_name: :public_api)
+      ctx = OpenapiRails::DSL::Context.new("/health", schema_name: :public_api)
       ctx.get("Health check") { response(200, "OK") }
       OpenapiRails::DSL::MetadataStore.register(ctx)
 
-      writer = described_class.new(:public_api, OpenapiRails.configuration.specs[:public_api])
+      writer = described_class.new(:public_api, OpenapiRails.configuration.schemas[:public_api])
       path = writer.write!
 
       expect(path).to end_with(".json")
@@ -65,11 +65,11 @@ RSpec.describe OpenapiRails::Generator::SpecWriter do
       klass.include OpenapiRails::Components::Base
       klass.schema(type: :object, properties: {id: {type: :integer}})
 
-      ctx = OpenapiRails::DSL::Context.new("/test", spec_name: :public_api)
+      ctx = OpenapiRails::DSL::Context.new("/test", schema_name: :public_api)
       ctx.get { response(200, "OK") }
       OpenapiRails::DSL::MetadataStore.register(ctx)
 
-      writer = described_class.new(:public_api, OpenapiRails.configuration.specs[:public_api])
+      writer = described_class.new(:public_api, OpenapiRails.configuration.schemas[:public_api])
       path = writer.write!
 
       content = YAML.safe_load_file(path)
@@ -79,15 +79,15 @@ RSpec.describe OpenapiRails::Generator::SpecWriter do
 
   describe "#build_document" do
     it "merges paths from multiple contexts" do
-      ctx1 = OpenapiRails::DSL::Context.new("/users", spec_name: :public_api)
+      ctx1 = OpenapiRails::DSL::Context.new("/users", schema_name: :public_api)
       ctx1.get("List") { response(200, "OK") }
-      ctx2 = OpenapiRails::DSL::Context.new("/posts", spec_name: :public_api)
+      ctx2 = OpenapiRails::DSL::Context.new("/posts", schema_name: :public_api)
       ctx2.get("List") { response(200, "OK") }
 
       OpenapiRails::DSL::MetadataStore.register(ctx1)
       OpenapiRails::DSL::MetadataStore.register(ctx2)
 
-      writer = described_class.new(:public_api, OpenapiRails.configuration.specs[:public_api])
+      writer = described_class.new(:public_api, OpenapiRails.configuration.schemas[:public_api])
       doc = writer.build_document
 
       expect(doc.to_h["paths"].keys).to contain_exactly("/users", "/posts")
@@ -96,7 +96,7 @@ RSpec.describe OpenapiRails::Generator::SpecWriter do
 
   describe ".generate_all!" do
     it "generates files for all configured specs" do
-      ctx = OpenapiRails::DSL::Context.new("/health", spec_name: :public_api)
+      ctx = OpenapiRails::DSL::Context.new("/health", schema_name: :public_api)
       ctx.get { response(200, "OK") }
       OpenapiRails::DSL::MetadataStore.register(ctx)
 
@@ -105,10 +105,10 @@ RSpec.describe OpenapiRails::Generator::SpecWriter do
       expect(File.exist?(File.join(output_dir, "public_api.yaml"))).to be true
     end
 
-    it "warns when no specs configured" do
-      OpenapiRails.configuration.specs = {}
+    it "warns when no schemas configured" do
+      OpenapiRails.configuration.schemas = {}
 
-      expect { described_class.generate_all! }.to output(/No specs configured/).to_stderr
+      expect { described_class.generate_all! }.to output(/No schemas configured/).to_stderr
     end
   end
 end

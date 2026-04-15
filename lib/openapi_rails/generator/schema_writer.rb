@@ -2,23 +2,23 @@
 
 module OpenapiRails
   module Generator
-    class SpecWriter
+    class SchemaWriter
       def self.generate_all!
         config = OpenapiRails.configuration
 
-        if config.specs.empty?
-          warn "[openapi_rails] No specs configured, skipping generation"
+        if config.schemas.empty?
+          warn "[openapi_rails] No schemas configured, skipping generation"
           return
         end
 
-        config.specs.each do |name, spec_config|
-          new(name, spec_config).write!
+        config.schemas.each do |name, schema_config|
+          new(name, schema_config).write!
         end
       end
 
-      def initialize(spec_name, spec_config)
-        @spec_name = spec_name
-        @spec_config = spec_config
+      def initialize(schema_name, schema_config)
+        @schema_name = schema_name
+        @schema_config = schema_config
       end
 
       def write!
@@ -30,15 +30,15 @@ module OpenapiRails
       end
 
       def build_document
-        builder = Core::DocumentBuilder.new(@spec_config)
+        builder = Core::DocumentBuilder.new(@schema_config)
 
         # Merge paths from DSL metadata
-        DSL::MetadataStore.contexts_for(@spec_name).each do |context|
+        DSL::MetadataStore.contexts_for(@schema_name).each do |context|
           builder.add_path(context.path_template, context.to_openapi)
         end
 
         # Merge components from registry
-        scope = @spec_config[:component_scope]
+        scope = @schema_config[:component_scope]
         components = Components::Registry.instance.to_openapi_hash(scope: scope)
         builder.merge_components(components)
 
@@ -48,16 +48,16 @@ module OpenapiRails
       private
 
       def output_dir
-        OpenapiRails.configuration.spec_output_dir
+        OpenapiRails.configuration.schema_output_dir
       end
 
       def filename
-        ext = (OpenapiRails.configuration.spec_output_format == :json) ? "json" : "yaml"
-        "#{@spec_name}.#{ext}"
+        ext = (OpenapiRails.configuration.schema_output_format == :json) ? "json" : "yaml"
+        "#{@schema_name}.#{ext}"
       end
 
       def format_output(document)
-        if OpenapiRails.configuration.spec_output_format == :json
+        if OpenapiRails.configuration.schema_output_format == :json
           document.to_json
         else
           document.to_yaml

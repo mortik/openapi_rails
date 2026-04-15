@@ -110,9 +110,9 @@ RSpec.describe "OpenAPI spec generation" do
       register_posts_endpoints
 
       # Generate
-      OpenapiRails.configuration.spec_output_dir = output_dir
+      OpenapiRails.configuration.schema_output_dir = output_dir
       config = {info: {title: "Dummy API", version: "1.0.0"}, servers: [{url: "/"}]}
-      writer = OpenapiRails::Generator::SpecWriter.new(:public_api, config)
+      writer = OpenapiRails::Generator::SchemaWriter.new(:public_api, config)
       path = writer.write!
 
       generated = YAML.safe_load_file(path)
@@ -135,7 +135,7 @@ RSpec.describe "OpenAPI spec generation" do
   private
 
   def register_users_endpoints
-    users_ctx = OpenapiRails::DSL::Context.new("/api/v1/users", spec_name: :public_api)
+    users_ctx = OpenapiRails::DSL::Context.new("/api/v1/users", schema_name: :public_api)
     users_ctx.get("List users") do
       tags "Users"
       operationId "listUsers"
@@ -157,7 +157,7 @@ RSpec.describe "OpenAPI spec generation" do
     end
     OpenapiRails::DSL::MetadataStore.register(users_ctx)
 
-    user_ctx = OpenapiRails::DSL::Context.new("/api/v1/users/{id}", spec_name: :public_api)
+    user_ctx = OpenapiRails::DSL::Context.new("/api/v1/users/{id}", schema_name: :public_api)
     user_ctx.parameter(name: :id, in: :path, schema: {type: :integer})
     user_ctx.get("Get a user") do
       tags "Users"
@@ -187,7 +187,7 @@ RSpec.describe "OpenAPI spec generation" do
   end
 
   def register_posts_endpoints
-    posts_ctx = OpenapiRails::DSL::Context.new("/api/v1/posts", spec_name: :public_api)
+    posts_ctx = OpenapiRails::DSL::Context.new("/api/v1/posts", schema_name: :public_api)
     posts_ctx.get("List posts") do
       tags "Posts"
       operationId "listPosts"
@@ -210,7 +210,7 @@ RSpec.describe "OpenAPI spec generation" do
     end
     OpenapiRails::DSL::MetadataStore.register(posts_ctx)
 
-    post_ctx = OpenapiRails::DSL::Context.new("/api/v1/posts/{id}", spec_name: :public_api)
+    post_ctx = OpenapiRails::DSL::Context.new("/api/v1/posts/{id}", schema_name: :public_api)
     post_ctx.parameter(name: :id, in: :path, schema: {type: :integer})
     post_ctx.get("Get a post") do
       tags "Posts"

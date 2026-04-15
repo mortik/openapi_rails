@@ -12,10 +12,10 @@ RSpec.describe OpenapiRails::Adapters::Minitest::DSL do
     klass
   end
 
-  describe ".openapi_spec" do
-    it "sets the spec name" do
-      test_class.openapi_spec(:public_api)
-      expect(test_class._openapi_spec_name).to eq(:public_api)
+  describe ".openapi_schema" do
+    it "sets the schema name" do
+      test_class.openapi_schema(:public_api)
+      expect(test_class._openapi_schema_name).to eq(:public_api)
     end
   end
 
@@ -42,14 +42,14 @@ RSpec.describe OpenapiRails::Adapters::Minitest::DSL do
       expect(contexts.any? { |c| c.path_template == "/posts" }).to be true
     end
 
-    it "uses the configured spec name" do
-      test_class.openapi_spec(:admin_api)
+    it "uses the configured schema name" do
+      test_class.openapi_schema(:admin_api)
       test_class.api_path("/admin") do
         get { response(200, "OK") }
       end
 
       context = test_class._openapi_contexts.last
-      expect(context.spec_name).to eq(:admin_api)
+      expect(context.schema_name).to eq(:admin_api)
     end
 
     it "supports full operation DSL" do

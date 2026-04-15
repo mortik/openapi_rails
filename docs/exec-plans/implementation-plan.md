@@ -73,7 +73,7 @@ openapi_rails/
 │   │   │   └── coverage_reporter.rb
 │   │   │
 │   │   ├── generator/                          # OpenAPI spec file output
-│   │   │   ├── spec_writer.rb                  # Writes JSON/YAML from metadata
+│   │   │   ├── schema_writer.rb                  # Writes JSON/YAML from metadata
 │   │   │   ├── json_formatter.rb
 │   │   │   └── yaml_formatter.rb
 │   │   │
@@ -97,7 +97,7 @@ openapi_rails/
 │
 ├── app/
 │   └── controllers/openapi_rails/
-│       ├── specs_controller.rb                 # Serves OA spec as JSON/YAML
+│       ├── schemas_controller.rb                 # Serves OA spec as JSON/YAML
 │       └── ui_controller.rb                    # Serves Swagger UI HTML
 │
 ├── config/
@@ -136,7 +136,7 @@ s.add_development_dependency 'rubocop'
 ```ruby
 OpenapiRails.configure do |config|
   # Spec definitions (supports multiple: public, admin, internal)
-  config.specs = {
+  config.schemas = {
     public_api: {
       info: { title: 'Public API', version: 'v1' },
       servers: [{ url: 'https://api.example.com' }],
@@ -156,8 +156,8 @@ OpenapiRails.configure do |config|
   config.error_handler = nil                     # Proc for custom error rendering
 
   # Test / Generation
-  config.spec_output_dir = 'swagger'
-  config.spec_output_format = :yaml              # :yaml or :json
+  config.schema_output_dir = 'swagger'
+  config.schema_output_format = :yaml              # :yaml or :json
   config.validate_responses_in_tests = true
 
   # UI (optional — disabled by default)
@@ -293,7 +293,7 @@ require 'openapi_rails/minitest'
 class UsersApiTest < ActionDispatch::IntegrationTest
   include OpenapiRails::Minitest::DSL
 
-  openapi_spec :public_api  # which spec this test contributes to
+  openapi_schema :public_api  # which spec this test contributes to
 
   api_path '/api/v1/users' do
     get 'List users' do
@@ -575,7 +575,7 @@ Tests (DSL) + Components (Ruby classes)
         DocumentBuilder
                │
                ▼
-         SpecWriter
+         SchemaWriter
                │
           ┌────┴────┐
           ▼         ▼
@@ -645,7 +645,7 @@ Creates:
 - All DSL methods (parameter, request_body, response, schema, etc.)
 - `Adapters::RSpec` — full integration (describe/it generation, let-based params, after-suite hook)
 - `Testing::RequestBuilder`, `Testing::ResponseValidator`
-- `Generator::SpecWriter`, JSON/YAML formatters
+- `Generator::SchemaWriter`, JSON/YAML formatters
 - Rake task `openapi_rails:generate`
 - Integration tests with a dummy Rails app + RSpec
 

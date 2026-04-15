@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 OpenapiRails.configure do |config|
-  # Define your API specs. Each key is a spec name, and can have its own
+  # Define your API schemas. Each key is a schema name, and can have its own
   # info, servers, and component scope.
-  config.specs = {
+  config.schemas = {
     public_api: {
       info: { title: "<%= app_name %> API", version: "v1" },
       servers: [{ url: "/" }]
@@ -16,9 +16,9 @@ OpenapiRails.configure do |config|
   # Transform snake_case keys to camelCase in component output
   config.camelize_keys = true
 
-  # Generated spec output
-  config.spec_output_dir = "swagger"
-  config.spec_output_format = :yaml
+  # Generated schema output
+  config.schema_output_dir = "swagger"
+  config.schema_output_format = :yaml
 
   # Validate response bodies in tests against defined schemas
   config.validate_responses_in_tests = true

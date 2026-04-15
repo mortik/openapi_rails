@@ -7,8 +7,8 @@ module OpenapiRails
     module RSpec
       module ExampleGroupHelpers
         def path(template, &block)
-          spec_name = metadata[:openapi_spec_name]
-          context = DSL::Context.new(template, spec_name: spec_name)
+          schema_name = metadata[:openapi_schema_name]
+          context = DSL::Context.new(template, schema_name: schema_name)
 
           describe template do
             # Store context reference on the example group metadata
@@ -282,9 +282,9 @@ module OpenapiRails
           end
 
           config.after(:suite) do
-            OpenapiRails::Generator::SpecWriter.generate_all!
+            OpenapiRails::Generator::SchemaWriter.generate_all!
           rescue => e
-            warn "[openapi_rails] Spec generation failed: #{e.message}"
+            warn "[openapi_rails] Schema generation failed: #{e.message}"
           end
         end
       end

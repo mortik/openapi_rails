@@ -3,13 +3,13 @@
 module OpenapiRails
   module DSL
     class Context
-      attr_reader :path_template, :operations, :path_parameters, :spec_name
+      attr_reader :path_template, :operations, :path_parameters, :schema_name
 
       HTTP_METHODS = %i[get post put patch delete head options trace].freeze
 
-      def initialize(path_template, spec_name: nil)
+      def initialize(path_template, schema_name: nil)
         @path_template = path_template
-        @spec_name = spec_name
+        @schema_name = schema_name
         @operations = {}
         @path_parameters = []
       end

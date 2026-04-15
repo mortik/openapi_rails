@@ -5,7 +5,7 @@ require "test_helper"
 class PostsApiTest < ActionDispatch::IntegrationTest
   include OpenapiRails::Adapters::Minitest::DSL
 
-  openapi_spec :public_api
+  openapi_schema :public_api
 
   setup do
     Post.delete_all

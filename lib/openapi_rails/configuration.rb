@@ -2,20 +2,20 @@
 
 module OpenapiRails
   class Configuration
-    # Spec definitions — supports multiple specs (e.g. public, admin, internal)
-    # Each key maps to a hash with :info, :servers, :component_scope, etc.
-    attr_accessor :specs
+    # Schema definitions — supports multiple schemas (e.g. public_api, admin_api)
+    # Each key maps to a hash with :info, :servers, :component_scope, :strict_mode, etc.
+    attr_accessor :schemas
 
     # Components
     attr_accessor :component_paths
-    attr_accessor :camelize_keys, :key_transform, :response_validation, :strict_mode, :strict_query_params,
-      :coerce_params, :error_handler, :spec_output_format, :validate_responses_in_tests, :ui_path, :ui_config, :coverage_report_path
+    attr_accessor :camelize_keys, :key_transform, :response_validation, :strict_query_params,
+      :coerce_params, :error_handler, :schema_output_format, :validate_responses_in_tests, :ui_path, :ui_config, :coverage_report_path
 
     # Middleware (runtime validation)
     attr_accessor :request_validation
 
     # Test / Generation
-    attr_accessor :spec_output_dir
+    attr_accessor :schema_output_dir
 
     # UI (optional)
     attr_accessor :ui_enabled
@@ -24,18 +24,17 @@ module OpenapiRails
     attr_accessor :coverage_enabled
 
     def initialize
-      @specs = {}
+      @schemas = {}
       @component_paths = ["app/api_components"]
       @camelize_keys = true
       @key_transform = nil
       @request_validation = :disabled
       @response_validation = :disabled
-      @strict_mode = false
       @strict_query_params = false
       @coerce_params = true
       @error_handler = nil
-      @spec_output_dir = "swagger"
-      @spec_output_format = :yaml
+      @schema_output_dir = "swagger"
+      @schema_output_format = :yaml
       @validate_responses_in_tests = true
       @ui_enabled = false
       @ui_path = "/api-docs"
@@ -53,9 +52,9 @@ module OpenapiRails
         raise ConfigurationError, "response_validation must be :disabled, :enabled, or :warn_only"
       end
 
-      return if %i[yaml json].include?(@spec_output_format)
+      return if %i[yaml json].include?(@schema_output_format)
 
-      raise ConfigurationError, "spec_output_format must be :yaml or :json"
+      raise ConfigurationError, "schema_output_format must be :yaml or :json"
     end
   end
 end

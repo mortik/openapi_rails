@@ -9,16 +9,16 @@ module OpenapiRails
         def self.included(base)
           base.extend ClassMethods
           base.class_attribute :_openapi_contexts, default: []
-          base.class_attribute :_openapi_spec_name, default: nil
+          base.class_attribute :_openapi_schema_name, default: nil
         end
 
         module ClassMethods
-          def openapi_spec(name)
-            self._openapi_spec_name = name.to_sym
+          def openapi_schema(name)
+            self._openapi_schema_name = name.to_sym
           end
 
           def api_path(template, &block)
-            context = OpenapiRails::DSL::Context.new(template, spec_name: _openapi_spec_name)
+            context = OpenapiRails::DSL::Context.new(template, schema_name: _openapi_schema_name)
             context.instance_eval(&block) if block
             self._openapi_contexts = _openapi_contexts + [context]
             OpenapiRails::DSL::MetadataStore.register(context)
@@ -119,9 +119,9 @@ module OpenapiRails
 
       def self.install!
         ::Minitest.after_run do
-          OpenapiRails::Generator::SpecWriter.generate_all!
+          OpenapiRails::Generator::SchemaWriter.generate_all!
         rescue => e
-          warn "[openapi_rails] Spec generation failed: #{e.message}"
+          warn "[openapi_rails] Schema generation failed: #{e.message}"
         end
       end
     end

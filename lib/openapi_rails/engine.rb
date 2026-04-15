@@ -8,10 +8,10 @@ module OpenapiRails
       config = OpenapiRails.configuration
 
       if config.request_validation != :disabled || config.response_validation != :disabled
-        spec_path = default_spec_path(config)
+        schema_path = default_schema_path(config)
 
-        if spec_path && File.exist?(spec_path)
-          resolver = Middleware::SchemaResolver.new(spec_path: spec_path)
+        if schema_path && File.exist?(schema_path)
+          resolver = Middleware::SchemaResolver.new(spec_path: schema_path)
 
           if config.request_validation != :disabled
             app.middleware.use Middleware::RequestValidation,
@@ -46,12 +46,12 @@ module OpenapiRails
 
     private
 
-    def default_spec_path(config)
-      return nil if config.specs.empty?
+    def default_schema_path(config)
+      return nil if config.schemas.empty?
 
-      spec_name = config.specs.keys.first
-      ext = (config.spec_output_format == :json) ? "json" : "yaml"
-      Rails.root.join(config.spec_output_dir, "#{spec_name}.#{ext}").to_s
+      schema_name = config.schemas.keys.first
+      ext = (config.schema_output_format == :json) ? "json" : "yaml"
+      Rails.root.join(config.schema_output_dir, "#{schema_name}.#{ext}").to_s
     end
   end
 end

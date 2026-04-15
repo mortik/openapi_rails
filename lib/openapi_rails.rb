@@ -52,4 +52,5 @@ require_relative "openapi_rails/middleware/error_handler"
 require_relative "openapi_rails/middleware/schema_resolver"
 require_relative "openapi_rails/middleware/request_validation"
 require_relative "openapi_rails/middleware/response_validation"
+require_relative "openapi_rails/controller_helpers"
 require_relative "openapi_rails/engine" if defined?(Rails::Engine)

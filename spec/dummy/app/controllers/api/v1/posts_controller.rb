@@ -3,6 +3,8 @@
 module Api
   module V1
     class PostsController < ActionController::API
+      include OpenapiRails::ControllerHelpers
+
       def index
         posts = if params[:user_id]
           Post.where(user_id: params[:user_id])
@@ -41,7 +43,7 @@ module Api
       private
 
       def post_params
-        params.permit(:title, :body, :user_id)
+        openapi_permit(Schemas::PostInput)
       end
 
       def post_json(post)

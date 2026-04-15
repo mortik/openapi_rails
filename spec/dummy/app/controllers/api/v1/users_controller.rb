@@ -3,6 +3,8 @@
 module Api
   module V1
     class UsersController < ActionController::API
+      include OpenapiRails::ControllerHelpers
+
       def index
         users = User.all
         render json: users.map { |u| user_json(u) }
@@ -48,7 +50,7 @@ module Api
       private
 
       def user_params
-        params.permit(:name, :email)
+        openapi_permit(Schemas::UserInput)
       end
 
       def user_json(user)

@@ -64,7 +64,34 @@ module OpenapiRails
           end
         end
 
+        def permitted_params
+          properties = _schema_definition["properties"]
+          return [] unless properties
+
+          build_permit_list(properties)
+        end
+
         private
+
+        def build_permit_list(properties)
+          properties.map do |key, spec|
+            param_name = key.to_sym
+            type = spec["type"]
+
+            if type == "array"
+              items = spec["items"]
+              if items && items["type"] == "object" && items["properties"]
+                {param_name => build_permit_list(items["properties"])}
+              else
+                {param_name => []}
+              end
+            elsif type == "object" && spec["properties"]
+              {param_name => build_permit_list(spec["properties"])}
+            else
+              param_name
+            end
+          end
+        end
 
         def should_transform_keys?
           !_skip_key_transformation && OpenapiRails.configuration.camelize_keys

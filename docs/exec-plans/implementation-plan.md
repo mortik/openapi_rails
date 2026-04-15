@@ -434,6 +434,24 @@ end
 | `schema_hidden(true)` | Exclude from output (still available for inheritance) |
 | `skip_key_transformation(true)` | Disable camelCase conversion for this component |
 | `component_type(:schemas)` | Set component type (schemas, parameters, securitySchemes, requestBodies, responses, headers, examples, links, callbacks) |
+| `permitted_params` | Returns a Rails strong params permit list derived from schema properties. Handles nested objects and arrays. |
+
+### Controller Helpers
+
+Include `OpenapiRails::ControllerHelpers` in your controllers to use schema components for strong params:
+
+```ruby
+class Api::V1::UsersController < ActionController::API
+  include OpenapiRails::ControllerHelpers
+
+  def create
+    user = User.new(openapi_permit(Schemas::UserInput))
+    # ...
+  end
+end
+```
+
+`openapi_permit(component_class, key: nil)` calls `params.permit` with the permit list derived from the component's schema. Use `key:` when params are nested under a root key (e.g. `openapi_permit(Schemas::UserInput, key: :user)`).
 
 ### Loader
 

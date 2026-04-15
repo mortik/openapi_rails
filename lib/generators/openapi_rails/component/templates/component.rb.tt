@@ -1,0 +1,15 @@
+# frozen_string_literal: true
+
+class <%= module_name %>::<%= class_name %>
+  include OpenapiRails::Components::Base
+<% if needs_component_type? %>
+  component_type :<%= openapi_component_type %>
+<% end %>
+
+  schema(
+    type: :object,
+    properties: {
+      id: { type: :integer, readOnly: true }
+    }
+  )
+end

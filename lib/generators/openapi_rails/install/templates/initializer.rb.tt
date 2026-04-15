@@ -1,0 +1,34 @@
+# frozen_string_literal: true
+
+OpenapiRails.configure do |config|
+  # Define your API specs. Each key is a spec name, and can have its own
+  # info, servers, and component scope.
+  config.specs = {
+    public_api: {
+      info: { title: "<%= app_name %> API", version: "v1" },
+      servers: [{ url: "/" }]
+    }
+  }
+
+  # Where to find schema component classes
+  config.component_paths = ["app/api_components"]
+
+  # Transform snake_case keys to camelCase in component output
+  config.camelize_keys = true
+
+  # Generated spec output
+  config.spec_output_dir = "swagger"
+  config.spec_output_format = :yaml
+
+  # Validate response bodies in tests against defined schemas
+  config.validate_responses_in_tests = true
+
+  # Runtime request/response validation middleware
+  # Options: :disabled, :enabled, :warn_only
+  config.request_validation = :disabled
+  config.response_validation = :disabled
+
+  # Swagger UI (optional, disabled by default)
+  config.ui_enabled = false
+  # config.ui_path = "/api-docs"
+end

@@ -1,6 +1,12 @@
-# openapi_ruby
+<p align="center">
+  <img src="logo.svg" alt="openapi_ruby" width="200">
+</p>
 
-A unified OpenAPI 3.1 toolkit for Rails that combines test-driven spec generation, reusable schema components as Ruby classes, and runtime request/response validation middleware. Works with both RSpec and Minitest.
+<h1 align="center">openapi_ruby</h1>
+
+<p align="center">
+  A unified OpenAPI 3.1 toolkit for Rails that combines test-driven spec generation, reusable schema components as Ruby classes, and runtime request/response validation middleware. Works with both RSpec and Minitest.
+</p>
 
 Replaces [rswag](https://github.com/rswag/rswag), [rswag-schema-components](https://github.com/101skills-gmbh/rswag-schema-components), and [committee](https://github.com/interagent/committee) with a single gem.
 

@@ -67,4 +67,91 @@ RSpec.describe OpenapiRuby::Core::DocumentBuilder do
       expect(result["openapi"]).to eq("3.1.0")
     end
   end
+
+  describe "auto validation error responses" do
+    it "injects ValidationError response component" do
+      builder = described_class.new(info: {title: "API", version: "1.0"})
+      builder.add_path("/users", {
+        "get" => {
+          "responses" => {"200" => {"description" => "OK"}}
+        }
+      })
+
+      doc = builder.build
+
+      expect(doc.to_h["components"]["responses"]["ValidationError"]).to include(
+        "description" => "Request validation failed"
+      )
+    end
+
+    it "adds 400 ref to operations without one" do
+      builder = described_class.new(info: {title: "API", version: "1.0"})
+      builder.add_path("/users", {
+        "get" => {
+          "responses" => {"200" => {"description" => "OK"}}
+        }
+      })
+
+      doc = builder.build
+
+      expect(doc.to_h["paths"]["/users"]["get"]["responses"]["400"]).to eq(
+        {"$ref" => "#/components/responses/ValidationError"}
+      )
+    end
+
+    it "does not override existing 400 responses" do
+      builder = described_class.new(info: {title: "API", version: "1.0"})
+      builder.add_path("/users", {
+        "get" => {
+          "responses" => {
+            "200" => {"description" => "OK"},
+            "400" => {"description" => "Custom bad request"}
+          }
+        }
+      })
+
+      doc = builder.build
+
+      expect(doc.to_h["paths"]["/users"]["get"]["responses"]["400"]).to eq(
+        {"description" => "Custom bad request"}
+      )
+    end
+
+    it "can be disabled" do
+      OpenapiRuby.configuration.auto_validation_error_response = false
+
+      builder = described_class.new(info: {title: "API", version: "1.0"})
+      builder.add_path("/users", {
+        "get" => {
+          "responses" => {"200" => {"description" => "OK"}}
+        }
+      })
+
+      doc = builder.build
+
+      expect(doc.to_h["paths"]["/users"]["get"]["responses"]).not_to have_key("400")
+      expect(doc.to_h).not_to have_key("components")
+    ensure
+      OpenapiRuby.configuration.auto_validation_error_response = true
+    end
+
+    it "uses custom validation_error_schema when configured" do
+      custom_schema = {"$ref" => "#/components/schemas/StandardError"}
+      OpenapiRuby.configuration.validation_error_schema = custom_schema
+
+      builder = described_class.new(info: {title: "API", version: "1.0"})
+      builder.add_path("/users", {
+        "get" => {
+          "responses" => {"200" => {"description" => "OK"}}
+        }
+      })
+
+      doc = builder.build
+
+      schema = doc.to_h.dig("components", "responses", "ValidationError", "content", "application/json", "schema")
+      expect(schema).to eq({"$ref" => "#/components/schemas/StandardError"})
+    ensure
+      OpenapiRuby.configuration.validation_error_schema = nil
+    end
+  end
 end

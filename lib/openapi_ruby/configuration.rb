@@ -12,6 +12,8 @@ module OpenapiRuby
     attr_accessor :camelize_keys, :key_transform, :response_validation, :strict_query_params,
       :coerce_params, :error_handler, :schema_output_format, :validate_responses_in_tests, :ui_path, :ui_config, :coverage_report_path
     attr_accessor :strict_reference_validation
+    attr_accessor :auto_validation_error_response
+    attr_accessor :validation_error_schema
 
     # Middleware (runtime validation)
     attr_accessor :request_validation
@@ -43,6 +45,8 @@ module OpenapiRuby
       @ui_path = "/api-docs"
       @ui_config = {}
       @strict_reference_validation = true
+      @auto_validation_error_response = true
+      @validation_error_schema = nil
       @coverage_enabled = false
       @coverage_report_path = "tmp/openapi_coverage.json"
     end

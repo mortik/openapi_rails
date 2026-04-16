@@ -21,6 +21,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/ValidationError"
     post:
       summary: Create a user
       operationId: createUser
@@ -39,6 +41,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "422":
           description: validation errors
           content:
@@ -64,6 +68,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "404":
           description: user not found
           content:
@@ -88,6 +94,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "404":
           description: user not found
           content:
@@ -102,6 +110,8 @@ paths:
       responses:
         "204":
           description: user deleted
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "404":
           description: user not found
           content:
@@ -129,6 +139,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Post"
+        "400":
+          $ref: "#/components/responses/ValidationError"
     post:
       summary: Create a post
       operationId: createPost
@@ -147,6 +159,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Post"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "422":
           description: validation errors
           content:
@@ -172,6 +186,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Post"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "404":
           description: post not found
           content:
@@ -186,6 +202,8 @@ paths:
       responses:
         "204":
           description: post deleted
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "404":
           description: post not found
           content:
@@ -193,6 +211,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 components:
+  responses:
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - error
+              - details
+            properties:
+              error:
+                type: string
+              details:
+                type: array
+                items:
+                  type: string
   schemas:
     User:
       type: object

@@ -36,21 +36,8 @@ module OpenapiRuby
       end
     end
 
-    initializer "openapi_ruby.components" do
-      config = OpenapiRuby.configuration
-      config.component_paths.each do |path|
-        expanded = Rails.root.join(path)
-        next unless expanded.exist?
-
-        # Auto-define modules for subdirectories (Schemas, Parameters, etc.)
-        expanded.children.select(&:directory?).each do |dir|
-          mod_name = dir.basename.to_s.camelize.to_sym
-          Object.const_set(mod_name, Module.new) unless Object.const_defined?(mod_name)
-        end
-
-        Dir[expanded.join("**", "*.rb")].sort.each { |f| require f }
-      end
-    end
+    # Components are loaded on demand via Components::Loader (e.g. in test helpers),
+    # not at boot time — avoids cross-file dependency ordering issues.
 
     private
 

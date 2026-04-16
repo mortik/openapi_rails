@@ -13,21 +13,20 @@ module OpenapiRuby
 
       def register(component_class)
         type = component_class._component_type
-        key = component_class.registry_key
+        name = component_class.name || "Anonymous"
 
         @components[type] ||= {}
 
-        if @components[type].key?(key) && @components[type][key] != component_class
-          raise DuplicateComponentError, "Component '#{component_class.component_name}' already registered under #{type}"
-        end
-
-        @components[type][key] = component_class
+        # Use the full class name as key to avoid collisions between
+        # same-named components in different scopes (e.g., Internal::V1::Schemas::PaginatedCollection
+        # vs Mobile::V1::Schemas::PaginatedCollection). Scope filtering happens in to_openapi_hash.
+        @components[type][name] = component_class
       end
 
       def unregister(component_class)
         type = component_class._component_type
-        key = component_class.registry_key
-        @components[type]&.delete(key)
+        name = component_class.name || "Anonymous"
+        @components[type]&.delete(name)
       end
 
       def components_for(type)

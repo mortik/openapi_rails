@@ -4,13 +4,20 @@ module OpenapiRuby
   module Components
     module Base
       def self.included(base)
-        base.extend ClassMethods
-        base.class_attribute :_schema_definition, default: {}
-        base.class_attribute :_schema_hidden, default: false
-        base.class_attribute :_skip_key_transformation, default: false
-        base.class_attribute :_component_type, default: :schemas
-        base.class_attribute :_component_scopes, default: []
-        base.class_attribute :_component_scopes_explicitly_set, default: false
+        # Guard against re-including in subclasses that already inherited Base.
+        # Re-running class_attribute with default: would overwrite inherited values.
+        already_included = base.respond_to?(:_schema_definition)
+
+        base.extend ClassMethods unless already_included
+
+        unless already_included
+          base.class_attribute :_schema_definition, default: {}
+          base.class_attribute :_schema_hidden, default: false
+          base.class_attribute :_skip_key_transformation, default: false
+          base.class_attribute :_component_type, default: :schemas
+          base.class_attribute :_component_scopes, default: []
+          base.class_attribute :_component_scopes_explicitly_set, default: false
+        end
 
         Registry.instance.register(base) if base.name
       end
@@ -28,7 +35,10 @@ module OpenapiRuby
         end
 
         def schema(definition = nil)
-          self._schema_definition = _schema_definition.deep_merge(deep_stringify(definition)) if definition
+          if definition
+            stringified = deep_stringify(definition)
+            self._schema_definition = deep_merge_with_array_concat(_schema_definition, stringified)
+          end
           _schema_definition
         end
 
@@ -56,6 +66,11 @@ module OpenapiRuby
         def shared_component
           self._component_scopes = []
           self._component_scopes_explicitly_set = true
+        end
+
+        def transform_enum_key(key)
+          key = ActiveSupport::Inflector.underscore(key.to_s)
+          key.parameterize(separator: "_").upcase
         end
 
         def component_name
@@ -113,6 +128,21 @@ module OpenapiRuby
 
         def should_transform_keys?
           !_skip_key_transformation && OpenapiRuby.configuration.camelize_keys
+        end
+
+        # Deep merge that concatenates arrays instead of replacing them,
+        # matching the behavior of rswag-schema_components' deeper_merge.
+        # This ensures inherited schema properties (like `required`) are merged correctly.
+        def deep_merge_with_array_concat(base, override)
+          base.merge(override) do |_key, old_val, new_val|
+            if old_val.is_a?(Hash) && new_val.is_a?(Hash)
+              deep_merge_with_array_concat(old_val, new_val)
+            elsif old_val.is_a?(Array) && new_val.is_a?(Array)
+              (old_val + new_val).uniq
+            else
+              new_val
+            end
+          end
         end
 
         def deep_stringify(value)

@@ -63,75 +63,80 @@ module OpenapiRuby
           expanded = File.expand_path(path)
           next unless Dir.exist?(expanded)
 
-          define_nested_modules(expanded, expanded)
-        end
-      end
+          Dir.glob(File.join(expanded, "**/")).each do |dir_path|
+            relative = dir_path.sub("#{expanded}/", "").chomp("/")
+            next if relative.empty?
 
-      def define_nested_modules(base_path, current_path)
-        Dir.children(current_path).select { |f| File.directory?(File.join(current_path, f)) }.each do |dir|
-          mod_name = dir.camelize.to_sym
-          Object.const_set(mod_name, Module.new) unless Object.const_defined?(mod_name)
-
-          child_path = File.join(current_path, dir)
-          define_nested_modules(base_path, child_path)
-        end
-      end
-
-      def load_component_files!
-        scope_paths = OpenapiRuby.configuration.component_scope_paths
-
-        if scope_paths.any?
-          load_with_scope_inference(scope_paths)
-        else
-          component_files.each { |f| require f }
-        end
-      end
-
-      def load_with_scope_inference(scope_paths)
-        @paths.each do |base_path|
-          expanded = File.expand_path(base_path)
-          next unless Dir.exist?(expanded)
-
-          files = Dir[File.join(expanded, "**", "*.rb")].sort
-
-          files.each do |file|
-            relative = file.sub("#{expanded}/", "")
-            inferred_scope = infer_scope(relative, scope_paths)
-
-            registered_before = Registry.instance.all_registered_classes.dup
-            require file
-            registered_after = Registry.instance.all_registered_classes
-
-            new_classes = registered_after - registered_before
-            new_classes.each do |klass|
-              next if klass._component_scopes_explicitly_set
-
-              if inferred_scope == :shared
-                # Shared components have empty scopes (included in all specs)
-                klass._component_scopes = []
-              elsif inferred_scope
-                Registry.instance.unregister(klass)
-                klass._component_scopes = [inferred_scope]
-                Registry.instance.register(klass)
+            const_name = relative.camelize
+            const_name.split("::").inject(Object) do |parent, name|
+              if parent.const_defined?(name, false)
+                parent.const_get(name, false)
+              else
+                parent.const_set(name, Module.new)
               end
             end
           end
         end
       end
 
+      def load_component_files!
+        scope_paths = OpenapiRuby.configuration.component_scope_paths
+
+        # Collect all files with their base paths, then sort globally by relative
+        # path to ensure consistent load order across multiple base paths.
+        # This prevents cross-directory inheritance issues (e.g., a subclass in
+        # packs/ai_feedback loading before its superclass in packs/api).
+        all_files = collect_all_files
+
+        if scope_paths.any?
+          load_with_scope_inference(all_files, scope_paths)
+        else
+          all_files.each { |entry| require entry[:file] }
+        end
+      end
+
+      def collect_all_files
+        files = []
+        @paths.each do |base_path|
+          expanded = File.expand_path(base_path)
+          next unless Dir.exist?(expanded)
+
+          Dir[File.join(expanded, "**", "*.rb")].each do |file|
+            relative = file.sub("#{expanded}/", "")
+            files << {file: file, base_path: expanded, relative: relative}
+          end
+        end
+        files.sort_by { |entry| entry[:relative] }
+      end
+
+      def load_with_scope_inference(all_files, scope_paths)
+        all_files.each do |entry|
+          inferred_scope = infer_scope(entry[:relative], scope_paths)
+
+          registered_before = Registry.instance.all_registered_classes.dup
+          require entry[:file]
+          registered_after = Registry.instance.all_registered_classes
+
+          new_classes = registered_after - registered_before
+          new_classes.each do |klass|
+            next if klass._component_scopes_explicitly_set
+
+            if inferred_scope == :shared
+              klass._component_scopes = []
+            elsif inferred_scope
+              Registry.instance.unregister(klass)
+              klass._component_scopes = [inferred_scope]
+              Registry.instance.register(klass)
+            end
+          end
+        end
+      end
+
       def infer_scope(relative_path, scope_paths)
-        # Match longest prefix first for specificity
         scope_paths.sort_by { |prefix, _| -prefix.length }.each do |prefix, scope|
           return scope&.to_sym if relative_path.start_with?("#{prefix}/")
         end
         nil
-      end
-
-      def component_files
-        @paths.flat_map do |path|
-          expanded = File.expand_path(path)
-          Dir[File.join(expanded, "**", "*.rb")]
-        end
       end
 
       def filter_type(type)

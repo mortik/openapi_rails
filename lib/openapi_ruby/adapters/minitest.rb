@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "openapi_ruby"
+require "cgi"
+require "uri"
 
 module OpenapiRuby
   module Adapters
@@ -36,45 +38,64 @@ module OpenapiRuby
           response_ctx = operation.responses[expected_status.to_s]
           raise OpenapiRuby::Error, "No response #{expected_status} defined for #{method.upcase}" unless response_ctx
 
-          # Build the request path
-          path = expand_path(context.path_template, params.merge(path_params))
+          # Build the request path with base path from schema server URL
+          base_path = resolve_base_path(context.schema_name)
+          path = "#{base_path}#{expand_path(context.path_template, params.merge(path_params))}"
 
-          # Execute the request
-          request_params = body || params.reject { |k, _| path_param_names(context).include?(k.to_s) }
-          request_headers = headers.dup
+          # Resolve security scheme parameters
+          security_params = resolve_security_params(operation, context.schema_name)
+          security_params.each do |param|
+            val = params[param[:name].to_sym] || params[param[:name]]
+            next if val.nil?
 
-          if body
-            content_type = request_headers["Content-Type"] || context.operations[method.to_s]&.instance_variable_get(:@consumes_list)&.first
-
-            if content_type&.include?("form-data") || content_type&.include?("x-www-form-urlencoded")
-              request_params = body
-              request_headers["Content-Type"] ||= content_type
-            else
-              request_params = body.is_a?(String) ? body : body.to_json
-              request_headers["Content-Type"] ||= content_type || "application/json"
+            case param[:in].to_s
+            when "header" then headers[param[:name]] = val
+            when "query" then params[param[:name]] = val
+            when "cookie" then headers["Cookie"] = "#{param[:name]}=#{val}"
             end
           end
 
-          send_args = {params: request_params}
-          send_args[:headers] = request_headers if request_headers.any?
+          # Default Accept header for API requests
+          headers["Accept"] ||= "application/json"
 
-          send(method, path, **send_args)
+          # Build query params (exclude path params)
+          query_params = params.reject { |k, _| path_param_names(context).include?(k.to_s) }
+
+          # Execute the request
+          if body
+            content_type = operation.request_body_definition&.dig("content")&.keys&.first || "application/json"
+            if content_type.include?("form-data") || content_type.include?("x-www-form-urlencoded")
+              request_args = {params: body, headers: headers}
+            else
+              request_args = {
+                params: body.is_a?(String) ? body : body.to_json,
+                headers: headers.merge("Content-Type" => content_type)
+              }
+            end
+            # Append query params to path when body is present
+            if query_params.any?
+              query_string = query_params.map { |k, v| "#{k}=#{CGI.escape(v.to_s)}" }.join("&")
+              path = "#{path}?#{query_string}"
+            end
+          else
+            request_args = {params: query_params, headers: headers}
+          end
+
+          send(method, path, **request_args)
 
           # Validate response
-          if OpenapiRuby.configuration.validate_responses_in_tests
-            assert_equal expected_status, response.status,
-              "Expected status #{expected_status}, got #{response.status}"
+          assert_equal expected_status, response.status,
+            "Expected status #{expected_status}, got #{response.status}\nResponse body: #{response.body}"
 
-            if response_ctx.schema_definition
-              validator = Testing::ResponseValidator.new
-              body_data = parse_response_body
-              errors = validator.validate(
-                response_body: body_data,
-                status_code: response.status,
-                response_context: response_ctx
-              )
-              assert errors.empty?, "Response validation failed:\n#{errors.join("\n")}"
-            end
+          if OpenapiRuby.configuration.validate_responses_in_tests && response_ctx.schema_definition
+            validator = Testing::ResponseValidator.new
+            body_data = parse_response_body
+            errors = validator.validate(
+              response_body: body_data,
+              status_code: response.status,
+              response_context: response_ctx
+            )
+            assert errors.empty?, "Response validation failed:\n#{errors.join("\n")}"
           end
 
           # Execute additional assertions
@@ -94,10 +115,8 @@ module OpenapiRuby
             next false unless ctx.operations.key?(method.to_s)
 
             if has_path_params
-              # Pick the context that has path parameter placeholders
               ctx.path_template.include?("{")
             else
-              # Pick the context without path parameter placeholders
               !ctx.path_template.include?("{")
             end
           end
@@ -113,6 +132,52 @@ module OpenapiRuby
 
         def path_param_names(context)
           context.path_parameters.map { |p| p["name"] }
+        end
+
+        def resolve_base_path(schema_name)
+          return "" unless schema_name
+
+          config = OpenapiRuby.configuration
+          schema_config = config.schemas[schema_name.to_sym] || config.schemas[schema_name.to_s]
+          return "" unless schema_config
+
+          server_url = schema_config.dig(:servers, 0, :url) || schema_config.dig("servers", 0, "url")
+          return "" unless server_url
+
+          URI.parse(server_url).path.chomp("/")
+        rescue URI::InvalidURIError
+          ""
+        end
+
+        def resolve_security_params(operation, schema_name)
+          security_list = operation.instance_variable_get(:@security_list)
+          return [] unless security_list
+
+          config = OpenapiRuby.configuration
+          schema_config = config.schemas[schema_name.to_sym] || config.schemas[schema_name.to_s]
+          return [] unless schema_config
+
+          security_schemes = schema_config.dig(:components, :securitySchemes) ||
+            schema_config.dig("components", "securitySchemes") || {}
+
+          if security_schemes.empty?
+            loader = Components::Loader.new(scope: schema_name.to_s.tr("/", "_").to_sym)
+            security_schemes = loader.security_schemes
+          end
+
+          scheme_names = security_list.flat_map { |s| s.is_a?(Hash) ? s.keys.map(&:to_s) : [] }
+
+          scheme_names.filter_map do |name|
+            scheme = security_schemes[name] || security_schemes[name.to_sym]
+            next unless scheme
+
+            type = scheme[:type] || scheme["type"]
+            if type.to_s == "apiKey"
+              {name: (scheme[:name] || scheme["name"]).to_s, in: (scheme[:in] || scheme["in"]).to_s}
+            else
+              {name: "Authorization", in: "header"}
+            end
+          end.uniq { |p| [p[:name], p[:in]] }
         end
 
         def parse_response_body

@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 namespace :openapi_ruby do
-  desc "Generate OpenAPI spec files from test definitions and components"
+  desc "Generate OpenAPI schema files from spec definitions and components"
   task generate: :environment do
-    require "openapi_ruby"
-    OpenapiRuby::Generator::SchemaWriter.generate_all!
+    pattern = ENV.fetch("PATTERN", "spec/**/*_spec.rb")
+    command = "bundle exec rspec --pattern '#{pattern}' --dry-run --order defined"
+    puts "Generating OpenAPI schemas..."
+    system(command) || abort("Schema generation failed")
   end
 end

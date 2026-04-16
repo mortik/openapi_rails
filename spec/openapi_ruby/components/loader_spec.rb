@@ -22,14 +22,13 @@ RSpec.describe OpenapiRuby::Components::Loader do
       module_open = module_nesting ? "module #{module_nesting}\n" : ""
       module_close = module_nesting ? "end\n" : ""
 
-      File.write(full_path, <<~RUBY)
-        #{module_open}class #{class_name}
-          include OpenapiRuby::Components::Base
-#{scope_line}
-          schema(type: :object)
-        end
-        #{module_close}
-      RUBY
+      content = "#{module_open}class #{class_name}\n" \
+        "  include OpenapiRuby::Components::Base\n" \
+        "#{scope_line}\n" \
+        "  schema(type: :object)\n" \
+        "end\n" \
+        "#{module_close}\n"
+      File.write(full_path, content)
     end
 
     it "infers scopes from directory prefixes" do

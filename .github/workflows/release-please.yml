@@ -18,15 +18,16 @@ jobs:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
-          release-type: ruby
-          package-name: openapi_rails
-          version-file: lib/openapi_rails/version.rb
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
   publish:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
+    environment: rubygems
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -37,7 +38,8 @@ jobs:
       - name: Build gem
         run: gem build openapi_rails.gemspec
 
+      - name: Configure RubyGems trusted publisher
+        uses: rubygems/configure-rubygems-credentials@v1
+
       - name: Push to RubyGems
         run: gem push openapi_rails-*.gem
-        env:
-          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}

@@ -1,0 +1,10 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "ruby",
+      "package-name": "openapi_rails",
+      "version-file": "lib/openapi_rails/version.rb",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}

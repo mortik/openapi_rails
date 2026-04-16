@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.0](https://github.com/openapi-ruby/openapi-ruby/compare/v2.0.0...v2.1.0) (2026-04-16)
+
+
+### Features
+
+* add multi-schema Swagger UI, glob routes, and OAuth2 redirect ([0cd07b8](https://github.com/openapi-ruby/openapi-ruby/commit/0cd07b87033a6e1f59039bc78e859472c6175dce))
+
+
+### Bug Fixes
+
+* resolve standardrb linting violation in ui_controller ([a2b3a0f](https://github.com/openapi-ruby/openapi-ruby/commit/a2b3a0f120fb9da5a89ec7011c4971ca6045f612))
+
 ## [2.0.0](https://github.com/openapi-ruby/openapi-ruby/compare/v1.0.1...v2.0.0) (2026-04-16)
 
 

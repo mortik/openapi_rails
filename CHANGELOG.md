@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/openapi-ruby/openapi-ruby/compare/v2.2.1...v2.3.0) (2026-04-16)
+
+
+### Features
+
+* request_body schema shorthand and hidden responses ([032f5b0](https://github.com/openapi-ruby/openapi-ruby/commit/032f5b0ab322071190b55bb9688e939445f84b3d))
+
 ## [2.2.1](https://github.com/openapi-ruby/openapi-ruby/compare/v2.2.0...v2.2.1) (2026-04-16)
 
 

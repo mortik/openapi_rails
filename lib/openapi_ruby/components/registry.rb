@@ -17,6 +17,8 @@ module OpenapiRuby
 
         @components[type] ||= {}
 
+        check_for_duplicate!(component_class, type)
+
         # Use the full class name as key to avoid collisions between
         # same-named components in different scopes (e.g., Internal::V1::Schemas::PaginatedCollection
         # vs Mobile::V1::Schemas::PaginatedCollection). Scope filtering happens in to_openapi_hash.
@@ -48,6 +50,41 @@ module OpenapiRuby
       def clear!
         @components = {}
       end
+
+      private
+
+      def check_for_duplicate!(component_class, type)
+        short_name = component_class.component_name
+        new_scopes = component_class._component_scopes
+        new_scopes_set = component_class._component_scopes_explicitly_set
+
+        @components[type]&.each_value do |existing|
+          next if existing.name == component_class.name
+          next unless existing.component_name == short_name
+
+          existing_scopes = existing._component_scopes
+          existing_scopes_set = existing._component_scopes_explicitly_set
+
+          # Skip when exactly one side has explicitly configured scopes — the other
+          # is still at its default (freshly included) and may get scopes set later via
+          # component_scopes, which unregisters/re-registers and retriggers this check.
+          next if new_scopes_set != existing_scopes_set
+
+          if scopes_overlap?(new_scopes, existing_scopes)
+            raise DuplicateComponentError,
+              "Component '#{short_name}' is already registered as #{type} " \
+              "(existing: #{existing.name}, new: #{component_class.name})"
+          end
+        end
+      end
+
+      def scopes_overlap?(a, b)
+        return true if a.empty? && b.empty?
+        return true if a.empty? || b.empty?
+        (a & b).any?
+      end
+
+      public
 
       def to_openapi_hash(scope: nil)
         result = {}

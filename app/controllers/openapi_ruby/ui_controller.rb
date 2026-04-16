@@ -53,7 +53,7 @@ module OpenapiRuby
                 SwaggerUIBundle.presets.apis,
                 SwaggerUIBundle.SwaggerUIStandalonePreset
               ],
-              layout: "#{@schemas.size > 1 ? "StandaloneLayout" : "BaseLayout"}",
+              layout: "#{(@schemas.size > 1) ? "StandaloneLayout" : "BaseLayout"}",
               #{ui_config_js}
             });
           </script>

@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1](https://github.com/openapi-ruby/openapi-ruby/compare/v2.2.0...v2.2.1) (2026-04-16)
+
+
+### Bug Fixes
+
+* require matching scope-configuration state for duplicate detection ([78c3146](https://github.com/openapi-ruby/openapi-ruby/commit/78c31462a4c026f554737cf38946cee3646399ff))
+
 ## [2.2.0](https://github.com/openapi-ruby/openapi-ruby/compare/v2.1.0...v2.2.0) (2026-04-16)
 
 

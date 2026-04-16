@@ -6,320 +6,174 @@ require "uri"
 module OpenapiRuby
   module Adapters
     module RSpec
+      # Class-level DSL methods extended onto :openapi example groups.
+      # All methods are inherited by nested describe/context/it_behaves_like blocks.
+      # Data is stored in RSpec metadata which propagates to child groups.
       module ExampleGroupHelpers
         def path(template, &block)
           schema_name = metadata[:openapi_schema_name]
           context = DSL::Context.new(template, schema_name: schema_name)
 
           describe template do
-            # Store context reference on the example group metadata
             metadata[:openapi_path_context] = context
-
-            # Evaluate the block which defines operations via get/post/etc.
-            # We need a proxy that captures DSL calls and maps them to RSpec describe blocks
-            proxy = PathProxy.new(self, context)
-            proxy.instance_eval(&block) if block
-
-            # Register the context for spec generation
+            instance_eval(&block) if block
             DSL::MetadataStore.register(context)
           end
-        end
-      end
-
-      class PathProxy
-        def initialize(example_group, context)
-          @example_group = example_group
-          @context = context
-        end
-
-        def parameter(attributes = {})
-          @context.parameter(attributes)
         end
 
         DSL::Context::HTTP_METHODS.each do |method|
           define_method(method) do |summary = nil, &block|
+            path_ctx = metadata[:openapi_path_context]
             op_context = DSL::OperationContext.new(method, summary)
-            # Copy path-level parameters
-            @context.path_parameters.each { |p| op_context.parameter(p) }
-            @context.operations[method.to_s] = op_context
+            path_ctx.path_parameters.each { |p| op_context.parameter(p) }
+            path_ctx.operations[method.to_s] = op_context
 
-            @example_group.describe "#{method.to_s.upcase} #{@context.path_template}" do
-              # Evaluate operation-level DSL
-              op_proxy = OperationProxy.new(self, op_context, @context)
-              op_proxy.instance_eval(&block) if block
+            describe "#{method.to_s.upcase} #{path_ctx.path_template}" do
+              metadata[:openapi_operation] = op_context
+              instance_eval(&block) if block
             end
           end
         end
 
-        private
-
-        # Forward missing methods to the example group for non-DSL calls
-        def method_missing(name, ...)
-          if @example_group.respond_to?(name)
-            @example_group.send(name, ...)
-          else
-            super
+        def parameter(attributes = {})
+          if metadata[:openapi_operation]
+            metadata[:openapi_operation].parameter(attributes)
+          elsif metadata[:openapi_path_context]
+            metadata[:openapi_path_context].parameter(attributes)
           end
         end
 
-        def respond_to_missing?(name, include_private = false)
-          @example_group.respond_to?(name, include_private) || super
-        end
-      end
-
-      class OperationProxy
-        def initialize(example_group, operation_context, path_context)
-          @example_group = example_group
-          @operation = operation_context
-          @path_context = path_context
-        end
-
-        %i[tags operationId description deprecated consumes produces security
-          parameter request_body request_body_example].each do |method|
-          define_method(method) do |*args, **kwargs, &block|
-            if kwargs.empty?
-              @operation.send(method, *args, &block)
-            else
-              @operation.send(method, *args, **kwargs, &block)
-            end
+        %i[tags operationId deprecated security].each do |attr_name|
+          define_method(attr_name) do |value|
+            metadata[:openapi_operation]&.send(attr_name, value)
           end
         end
 
-        def response(status_code, description, hidden: false, &block)
-          response_ctx = @operation.response(status_code, description, hidden: hidden)
-          operation = @operation
-
-          @example_group.context "response #{status_code} #{description}" do
-            metadata[:openapi_operation] = operation
-            metadata[:openapi_response] = response_ctx
-
-            # Extend this example group (and nested contexts) with response DSL
-            extend ResponseDSL
-
-            # Evaluate response-level DSL
-            resp_proxy = ResponseProxy.new(self, response_ctx)
-            resp_proxy.instance_eval(&block) if block
-          end
+        def description(value = nil)
+          return super() if value.nil?
+          metadata[:openapi_operation]&.description(value)
         end
 
-        private
-
-        def method_missing(name, ...)
-          if @example_group.respond_to?(name)
-            @example_group.send(name, ...)
-          else
-            super
-          end
-        end
-
-        def respond_to_missing?(name, include_private = false)
-          @example_group.respond_to?(name, include_private) || super
-        end
-      end
-
-      # Module extended onto response example groups so run_test! and schema
-      # are available in nested context/describe blocks (inherited as class methods).
-      # Uses metadata (which is inherited by nested contexts) to find the response context.
-      module ResponseDSL
-        def run_test!(description = nil, &block)
-          response_ctx = metadata[:openapi_response]
-
-          it(description || "returns #{response_ctx.status_code}") do |example|
-            example_metadata = example.metadata
-
-            path = resolve_path(example_metadata)
-            operation = find_operation(example_metadata)
-
-            params = resolve_let(:request_params) || {}
-            headers = resolve_let(:request_headers) || {}
-            body = resolve_let(:request_body)
-
-            operation&.parameters&.each do |param|
-              name = param["name"]
-              val = resolve_let(name.to_sym)
-              next unless val
-
-              case param["in"]
-              when "query"
-                params[name] = val
-              when "header"
-                headers[name] = val
-              end
-            end
-
-            method = operation&.verb || "get"
-            request_args = {params: params, headers: headers}
-
-            if body
-              content_type = operation&.request_body_definition&.dig("content")&.keys&.first || "application/json"
-              if content_type.include?("json")
-                request_args[:params] = body.is_a?(String) ? body : body.to_json
-                request_args[:headers] = (headers || {}).merge("Content-Type" => content_type)
-              elsif content_type.include?("form-data") || content_type.include?("x-www-form-urlencoded")
-                request_args[:params] = body
-              else
-                request_args[:params] = body.is_a?(String) ? body : body.to_json
-                request_args[:headers] = (headers || {}).merge("Content-Type" => content_type)
-              end
-            end
-
-            send(method, path, **request_args)
-
-            expected_status = response_ctx.status_code.to_i
-            actual_status = response.status
-            unless actual_status == expected_status
-              raise OpenapiRuby::ResponseValidationError,
-                "Expected status #{expected_status}, got #{actual_status}"
-            end
-
-            instance_eval(&block) if block
-          end
-        end
-
-        def schema(definition)
-          metadata[:openapi_response].schema(definition)
-        end
-      end
-
-      class ResponseProxy
-        def initialize(example_group, response_context)
-          @example_group = example_group
-          @response = response_context
-        end
-
-        def schema(definition)
-          @response.schema(definition)
-        end
-
-        def header(name, attributes = {})
-          @response.header(name, attributes)
-        end
-
-        def example(content_type, **)
-          @response.example(content_type, **)
+        def consumes(*content_types)
+          metadata[:openapi_operation]&.consumes(*content_types)
         end
 
         def produces(*content_types)
-          @response.produces(*content_types)
+          metadata[:openapi_operation]&.produces(*content_types)
         end
 
-        def run_test!(description = nil, &block)
-          response_ctx = @response
-          @example_group.it(description || "returns #{response_ctx.status_code}") do |example|
-            example_metadata = example.metadata
+        def request_body(attributes = {})
+          metadata[:openapi_operation]&.request_body(attributes)
+        end
 
-            # Resolve path parameters from let variables
-            path = resolve_path(example_metadata)
-            operation = find_operation(example_metadata)
+        def request_body_example(**kwargs)
+          metadata[:openapi_operation]&.request_body_example(**kwargs)
+        end
 
-            # Build params and headers from let variables
-            params = resolve_let(:request_params) || {}
-            headers = resolve_let(:request_headers) || {}
-            body = resolve_let(:request_body)
+        def response(status_code, description, hidden: false, &block)
+          operation = metadata[:openapi_operation]
+          response_ctx = operation.response(status_code, description, hidden: hidden)
 
-            # Merge individual parameter let values
-            operation&.parameters&.each do |param|
-              name = param["name"]
-              val = resolve_let(name.to_sym)
-              next unless val
-
-              case param["in"]
-              when "query"
-                params[name] = val
-              when "header"
-                headers[name] = val
-              when "path"
-                # Already handled in resolve_path
-              end
-            end
-
-            # Execute the request
-            method = operation&.verb || example_metadata[:openapi_operation]&.verb || "get"
-            send_args = {params: body || params}
-            send_args[:headers] = headers if headers.any?
-
-            if body
-              content_type = headers["Content-Type"] || operation&.instance_variable_get(:@consumes_list)&.first
-
-              if content_type&.include?("form-data") || content_type&.include?("x-www-form-urlencoded")
-                send_args[:params] = body
-                send_args[:headers] = (headers || {}).merge("Content-Type" => content_type)
-              else
-                send_args[:params] = body.is_a?(String) ? body : body.to_json
-                send_args[:headers] = (headers || {}).merge("Content-Type" => content_type || "application/json")
-              end
-            end
-
-            send(method.to_sym, path, **send_args)
-
-            # Validate response
-            if OpenapiRuby.configuration.validate_responses_in_tests && response_ctx.schema_definition
-              validator = Testing::ResponseValidator.new
-              errors = validator.validate(
-                response_body: parsed_response_body,
-                status_code: response.status,
-                response_context: response_ctx
-              )
-              expect(errors).to be_empty, "Response validation failed:\n#{errors.join("\n")}"
-            else
-              expect(response.status).to eq(response_ctx.status_code.to_i)
-            end
-
-            # Execute additional assertions
+          context "response #{status_code} #{description}" do
+            metadata[:openapi_response] = response_ctx
             instance_eval(&block) if block
           end
         end
 
-        # Forward let/before/after/subject to RSpec
-        def method_missing(name, ...)
-          if @example_group.respond_to?(name)
-            @example_group.send(name, ...)
-          else
-            super
-          end
+        def schema(definition)
+          metadata[:openapi_response]&.schema(definition)
         end
 
-        def respond_to_missing?(name, include_private = false)
-          @example_group.respond_to?(name, include_private) || super
+        def header(name, attributes = {})
+          metadata[:openapi_response]&.header(name, attributes)
+        end
+
+        def run_test!(description = nil, &block)
+          response_ctx = metadata[:openapi_response]
+
+          before do |example|
+            submit_openapi_request(example.metadata)
+          end
+
+          it(description || "returns #{response_ctx.status_code}") do |example|
+            assert_openapi_response(example.metadata)
+            instance_eval(&block) if block
+          end
         end
       end
 
-      # Helper methods mixed into RSpec examples
+      # Instance-level helper methods mixed into RSpec examples
       module ExampleHelpers
         private
 
-        def resolve_path(metadata)
-          path_ctx = find_path_context(metadata)
-          template = path_ctx&.path_template || ""
-          find_operation(metadata)
+        def submit_openapi_request(metadata)
+          path = resolve_path(metadata)
+          operation = find_in_metadata(metadata, :openapi_operation)
 
-          # Prepend base path from schema server URL
+          params = resolve_let(:request_params) || {}
+          headers = resolve_let(:request_headers) || {}
+          body = resolve_let(:request_body)
+
+          # Merge individual parameter let values
+          operation&.parameters&.each do |param|
+            name = param["name"]
+            val = resolve_let(name.to_sym)
+            next unless val
+
+            case param["in"]
+            when "query" then params[name] = val
+            when "header" then headers[name] = val
+            end
+          end
+
+          method = operation&.verb || "get"
+          # Default to JSON Accept header for API requests
+          headers["Accept"] ||= "application/json"
+          request_args = {params: params, headers: headers}
+
+          if body
+            content_type = operation&.request_body_definition&.dig("content")&.keys&.first || "application/json"
+            if content_type.include?("form-data") || content_type.include?("x-www-form-urlencoded")
+              request_args[:params] = body
+            else
+              request_args[:params] = body.is_a?(String) ? body : body.to_json
+              request_args[:headers] = headers.merge("Content-Type" => content_type)
+            end
+          end
+
+          send(method.to_sym, path, **request_args)
+        end
+
+        def assert_openapi_response(metadata)
+          response_ctx = find_in_metadata(metadata, :openapi_response)
+
+          expected_status = response_ctx.status_code.to_i
+          actual_status = response.status
+
+          unless actual_status == expected_status
+            raise "Response validation failed:\n" \
+              "Expected status #{expected_status}, got #{actual_status}\n" \
+              "Response body: #{response.body}"
+          end
+        end
+
+        def resolve_path(metadata)
+          path_ctx = find_in_metadata(metadata, :openapi_path_context)
+          template = path_ctx&.path_template || ""
+
           base_path = resolve_base_path(path_ctx&.schema_name)
           full_path = "#{base_path}#{template}"
 
-          # Substitute {param} placeholders with let values
           full_path.gsub(/\{(\w+)\}/) do
             name = ::Regexp.last_match(1)
-            val = resolve_let(name.to_sym)
-            val || "{#{name}}"
+            resolve_let(name.to_sym) || "{#{name}}"
           end
         end
 
-        def find_path_context(metadata)
+        def find_in_metadata(metadata, key)
           meta = metadata
           while meta
-            return meta[:openapi_path_context] if meta[:openapi_path_context]
-
-            meta = meta[:parent_example_group]
-          end
-          nil
-        end
-
-        def find_operation(metadata)
-          meta = metadata
-          while meta
-            return meta[:openapi_operation] if meta[:openapi_operation]
-
+            return meta[key] if meta[key]
             meta = meta[:parent_example_group]
           end
           nil
@@ -332,7 +186,6 @@ module OpenapiRuby
           schema_config = config.schemas[schema_name.to_sym] || config.schemas[schema_name.to_s]
           return "" unless schema_config
 
-          # Extract path from the first server URL
           server_url = schema_config.dig(:servers, 0, :url) || schema_config.dig("servers", 0, "url")
           return "" unless server_url
 
@@ -349,20 +202,9 @@ module OpenapiRuby
 
         def parsed_response_body
           return nil if response.body.empty?
-
           JSON.parse(response.body)
         rescue JSON::ParserError
           response.body
-        end
-
-        def operation_context_from_parent
-          meta = self.class.metadata
-          while meta
-            return meta[:openapi_operation] if meta[:openapi_operation]
-
-            meta = meta[:parent_example_group]
-          end
-          nil
         end
       end
 
@@ -371,7 +213,6 @@ module OpenapiRuby
           config.extend ExampleGroupHelpers, type: :openapi
           config.include ExampleHelpers, type: :openapi
 
-          # Make type: :openapi behave like request specs (includes integration test methods)
           if defined?(::RSpec::Rails)
             config.include ::RSpec::Rails::RequestExampleGroup, type: :openapi
           end

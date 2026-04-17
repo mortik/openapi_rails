@@ -69,7 +69,7 @@ RSpec.describe OpenapiRuby::Core::DocumentBuilder do
   end
 
   describe "auto validation error responses" do
-    it "injects ValidationError response component" do
+    it "injects SchemaValidationError response component" do
       builder = described_class.new(info: {title: "API", version: "1.0"})
       builder.add_path("/users", {
         "get" => {
@@ -79,7 +79,7 @@ RSpec.describe OpenapiRuby::Core::DocumentBuilder do
 
       doc = builder.build
 
-      expect(doc.to_h["components"]["responses"]["ValidationError"]).to include(
+      expect(doc.to_h["components"]["responses"]["SchemaValidationError"]).to include(
         "description" => "Request validation failed"
       )
     end
@@ -95,7 +95,7 @@ RSpec.describe OpenapiRuby::Core::DocumentBuilder do
       doc = builder.build
 
       expect(doc.to_h["paths"]["/users"]["get"]["responses"]["400"]).to eq(
-        {"$ref" => "#/components/responses/ValidationError"}
+        {"$ref" => "#/components/responses/SchemaValidationError"}
       )
     end
 
@@ -148,7 +148,7 @@ RSpec.describe OpenapiRuby::Core::DocumentBuilder do
 
       doc = builder.build
 
-      schema = doc.to_h.dig("components", "responses", "ValidationError", "content", "application/json", "schema")
+      schema = doc.to_h.dig("components", "responses", "SchemaValidationError", "content", "application/json", "schema")
       expect(schema).to eq({"$ref" => "#/components/schemas/StandardError"})
     ensure
       OpenapiRuby.configuration.validation_error_schema = nil

@@ -22,7 +22,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/User"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/SchemaValidationError"
     post:
       summary: Create a user
       operationId: createUser
@@ -42,7 +42,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/SchemaValidationError"
         "422":
           description: validation errors
           content:
@@ -69,7 +69,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/SchemaValidationError"
         "404":
           description: user not found
           content:
@@ -95,7 +95,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/SchemaValidationError"
         "404":
           description: user not found
           content:
@@ -111,7 +111,7 @@ paths:
         "204":
           description: user deleted
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/SchemaValidationError"
         "404":
           description: user not found
           content:
@@ -140,7 +140,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/Post"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/SchemaValidationError"
     post:
       summary: Create a post
       operationId: createPost
@@ -160,7 +160,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Post"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/SchemaValidationError"
         "422":
           description: validation errors
           content:
@@ -187,7 +187,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Post"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/SchemaValidationError"
         "404":
           description: post not found
           content:
@@ -203,7 +203,7 @@ paths:
         "204":
           description: post deleted
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/SchemaValidationError"
         "404":
           description: post not found
           content:
@@ -212,7 +212,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 components:
   responses:
-    ValidationError:
+    SchemaValidationError:
       description: Request validation failed
       content:
         application/json:

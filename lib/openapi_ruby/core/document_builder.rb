@@ -49,9 +49,9 @@ module OpenapiRuby
       private
 
       def inject_validation_error_responses!
-        # Add ValidationError response component
+        # Add SchemaValidationError response component
         @components["responses"] ||= {}
-        @components["responses"]["ValidationError"] ||= {
+        @components["responses"]["SchemaValidationError"] ||= {
           "description" => "Request validation failed",
           "content" => {
             "application/json" => {
@@ -66,7 +66,7 @@ module OpenapiRuby
             next unless operation.is_a?(Hash) && operation.key?("responses")
             next if key == "parameters"
 
-            operation["responses"]["400"] ||= {"$ref" => "#/components/responses/ValidationError"}
+            operation["responses"]["400"] ||= {"$ref" => "#/components/responses/SchemaValidationError"}
           end
         end
       end

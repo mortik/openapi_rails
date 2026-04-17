@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.5.1](https://github.com/openapi-ruby/openapi-ruby/compare/v2.5.0...v2.5.1) (2026-04-17)
+
+
+### Bug Fixes
+
+* hidden responses overwriting visible ones with same status code ([437a1d6](https://github.com/openapi-ruby/openapi-ruby/commit/437a1d620ddd54883a5fb79a628940261bfc90e6))
+
 ## [2.5.0](https://github.com/openapi-ruby/openapi-ruby/compare/v2.4.0...v2.5.0) (2026-04-17)
 
 

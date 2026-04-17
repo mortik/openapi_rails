@@ -26,16 +26,18 @@ RSpec.describe OpenapiRuby::DSL::Context do
       expect(result.keys).to include("get", "post")
     end
 
-    it "includes path-level parameters" do
+    it "propagates path-level parameters to operations" do
       ctx = described_class.new("/users/{id}")
       ctx.parameter(name: :id, in: :path, schema: {type: :integer})
       ctx.get("Get user") { response(200, "OK") }
 
       result = ctx.to_openapi
 
-      expect(result["parameters"].length).to eq(1)
-      expect(result["parameters"][0]["name"]).to eq("id")
-      expect(result["parameters"][0]["required"]).to be true
+      # Path-level parameters are copied to operations, not output at path level
+      expect(result).not_to have_key("parameters")
+      expect(result["get"]["parameters"].length).to eq(1)
+      expect(result["get"]["parameters"][0]["name"]).to eq("id")
+      expect(result["get"]["parameters"][0]["required"]).to be true
     end
 
     it "copies path parameters to operations" do

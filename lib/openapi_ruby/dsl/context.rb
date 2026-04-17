@@ -34,8 +34,8 @@ module OpenapiRuby
       def to_openapi
         result = {}
 
-        result["parameters"] = @path_parameters if @path_parameters.any?
-
+        # Path-level parameters are already copied into each operation (line 27),
+        # so we don't output them at the path level to avoid duplicates.
         @operations.each do |verb, op|
           result[verb] = op.to_openapi
         end

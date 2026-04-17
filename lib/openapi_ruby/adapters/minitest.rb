@@ -161,7 +161,8 @@ module OpenapiRuby
             schema_config.dig("components", "securitySchemes") || {}
 
           if security_schemes.empty?
-            loader = Components::Loader.new(scope: schema_name.to_s.tr("/", "_").to_sym)
+            scope = schema_config[:component_scope] || schema_config["component_scope"]
+            loader = Components::Loader.new(scope: scope&.to_sym)
             security_schemes = loader.security_schemes
           end
 

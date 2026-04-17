@@ -77,7 +77,13 @@ module OpenapiRuby
         ctx = ResponseContext.new(status_code, description, hidden: hidden)
         ctx.produces(*@produces_list) if @produces_list.any?
         ctx.instance_eval(&block) if block
-        @responses[status_code.to_s] = ctx
+
+        key = status_code.to_s
+        # Don't overwrite a visible response with a hidden one — hidden responses
+        # are test-only variants that should not remove the endpoint from the schema.
+        existing = @responses[key]
+        @responses[key] = ctx unless hidden && existing && !existing.hidden
+
         ctx
       end
 

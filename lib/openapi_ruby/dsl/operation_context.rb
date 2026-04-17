@@ -79,10 +79,11 @@ module OpenapiRuby
         ctx.instance_eval(&block) if block
 
         key = status_code.to_s
-        # Don't overwrite a visible response with a hidden one — hidden responses
-        # are test-only variants that should not remove the endpoint from the schema.
+        # Keep the first visible response for each status code. Subsequent responses
+        # with the same code are test variants and should not overwrite the schema.
+        # A visible response always wins over a hidden one.
         existing = @responses[key]
-        @responses[key] = ctx unless hidden && existing && !existing.hidden
+        @responses[key] = ctx if existing.nil? || (existing.hidden && !hidden)
 
         ctx
       end

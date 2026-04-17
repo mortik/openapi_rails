@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.6.1](https://github.com/openapi-ruby/openapi-ruby/compare/v2.6.0...v2.6.1) (2026-04-17)
+
+
+### Bug Fixes
+
+* always include top-level security array in generated schemas ([3fb6250](https://github.com/openapi-ruby/openapi-ruby/commit/3fb625017302994e846fa430a5f80da0e1641102))
+* prevent duplicate parameters from path-level + operation-level ([feb15df](https://github.com/openapi-ruby/openapi-ruby/commit/feb15df537cc61b4265548c1382b6f8628ef26e5))
+
 ## [2.6.0](https://github.com/openapi-ruby/openapi-ruby/compare/v2.5.2...v2.6.0) (2026-04-17)
 
 

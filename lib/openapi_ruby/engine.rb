@@ -7,6 +7,8 @@ module OpenapiRuby
     initializer "openapi_ruby.middleware" do |app|
       config = OpenapiRuby.configuration
 
+      next if ENV["OPENAPI_RUBY_GENERATING"]
+
       if config.request_validation != :disabled || config.response_validation != :disabled
         config.schemas.each do |name, schema_config|
           schema_path = resolve_schema_path(config, name)

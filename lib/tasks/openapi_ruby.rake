@@ -8,7 +8,7 @@ namespace :openapi_ruby do
 
     # Spawn a subprocess so RAILS_ENV defaults to "test" cleanly,
     # just like rswag did with RSpec::Core::RakeTask.
-    env = {"RAILS_ENV" => ENV.fetch("RAILS_ENV", "test")}
+    env = {"RAILS_ENV" => ENV.fetch("RAILS_ENV", "test"), "OPENAPI_RUBY_GENERATING" => "true"}
     script = generate_script(framework, pattern)
     command = "bundle exec ruby -e #{Shellwords.escape(script)}"
 

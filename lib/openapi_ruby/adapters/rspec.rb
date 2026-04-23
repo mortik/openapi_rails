@@ -26,7 +26,6 @@ module OpenapiRuby
           define_method(method) do |summary = nil, &block|
             path_ctx = metadata[:openapi_path_context]
             op_context = DSL::OperationContext.new(method, summary)
-            path_ctx.path_parameters.each { |p| op_context.parameter(p) }
             path_ctx.operations[method.to_s] = op_context
 
             describe "#{method.to_s.upcase} #{path_ctx.path_template}" do
